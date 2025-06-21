@@ -9,6 +9,8 @@ import {
   useMap,
 } from "react-leaflet";
 
+const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 type SurfLog = {
   id: number;
   date: string;
@@ -82,9 +84,9 @@ export default function Surf() {
     const fetchAll = async () => {
       try {
         const [logRes, locRes, boardRes] = await Promise.all([
-          fetch("http://localhost:8000/logs/surf"),
-          fetch("http://localhost:8000/surf/locations"),
-          fetch("http://localhost:8000/surf/boards"),
+          fetch(`${api}/logs/surf`),
+          fetch(`${api}/surf/locations`),
+          fetch(`${api}/surf/boards`),
         ]);
 
         const [logsData, locationsData, boardsData] = await Promise.all([
@@ -127,7 +129,7 @@ export default function Surf() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch("http://localhost:8000/logs/surf", {
+    const res = await fetch(`${api}/logs/surf`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -158,7 +160,7 @@ export default function Surf() {
       const lon = parseFloat(newLon);
 
       try {
-        const res = await fetch("http://localhost:8000/surf/locations", {
+        const res = await fetch(`${api}/surf/locations`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: newLocation, lat, lon }),
@@ -189,7 +191,7 @@ export default function Surf() {
   const addNewBoard = async () => {
     if (newBoard && !boards.includes(newBoard)) {
       try {
-        const res = await fetch("http://localhost:8000/surf/boards", {
+        const res = await fetch(`${api}/surf/boards`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: newBoard }),

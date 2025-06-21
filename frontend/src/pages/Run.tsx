@@ -9,6 +9,8 @@ import {
 } from "react-leaflet";
 import type { LatLngExpression, LatLngBoundsExpression } from "leaflet";
 
+const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 type RunApiResponse = {
   id: number;
   date: string;
@@ -79,10 +81,10 @@ export default function Run() {
       setLoading(true);
       try {
         // First import from Strava
-        await fetch("http://localhost:8000/import/runs", { method: "POST" });
+        await fetch(`${api}/import/runs`, { method: "POST" });
 
         // Then fetch updated logs
-        const res = await fetch("http://localhost:8000/logs/runs");
+        const res = await fetch(`${api}/logs/runs`);
         const data = await res.json();
         const formatted = data.map(
           (run: RunApiResponse): RunLog => ({

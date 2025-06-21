@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import Card from "../Card";
 import { formatDistanceToNow } from "date-fns";
 
+const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 export type LiftSet = { reps: number; weight: number };
 export type LiftingLog = {
   id: number;
@@ -54,7 +56,7 @@ export default function LiftProgress() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const res = await fetch("http://localhost:8000/logs/lifting");
+        const res = await fetch(`${api}/logs/lifting`);
         const data = await res.json();
         setLogs(Array.isArray(data) ? data : []);
       } catch (err) {

@@ -4,6 +4,8 @@ import type { LatLngExpression, LatLngBoundsExpression } from "leaflet"
 import { formatDistanceToNow } from "date-fns"
 import Card from "../Card"
 
+const api = import.meta.env.VITE_API_URL || "http://localhost:8000"
+
 type RunApiResponse = {
   id: number
   date: string
@@ -61,7 +63,7 @@ export default function RunProgress() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const res = await fetch("http://localhost:8000/logs/runs")
+        const res = await fetch(`${api}/logs/runs`)
         const data: RunApiResponse[] = await res.json()
         const parsed = data.map((run) => ({
           ...run,

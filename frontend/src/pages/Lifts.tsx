@@ -8,6 +8,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 type SetEntry = { reps: number; weight: number | "" };
 type LiftSection = { warmup: SetEntry[]; work: SetEntry[] };
 type LiftingLog = {
@@ -35,7 +37,7 @@ export default function Lifts() {
   useEffect(() => {
     const fetchAllLogs = async () => {
       try {
-        const response = await fetch("http://localhost:8000/logs/lifting");
+        const response = await fetch(`${api}/logs/lifting`);
         const data = await response.json();
         if (Array.isArray(data)) {
           setLogs(data);
@@ -155,7 +157,7 @@ export default function Lifts() {
         notes,
       };
 
-      const response = await fetch("http://localhost:8000/logs/lifting", {
+      const response = await fetch(`${api}/logs/lifting`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

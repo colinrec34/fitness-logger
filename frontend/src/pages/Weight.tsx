@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import WeightProgress from "../components/HomeCards/WeightProgress";
 
+const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 type WeightEntry = {
   id: number;
   date: string;
@@ -24,7 +26,7 @@ export default function Weight() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const res = await fetch("http://localhost:8000/logs/weight");
+        const res = await fetch(`${api}/logs/weight`);
         const data = await res.json();
         setLogs(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -55,7 +57,7 @@ export default function Weight() {
     const payload = { date, weight };
 
     try {
-      const res = await fetch("http://localhost:8000/logs/weight", {
+      const res = await fetch(`${api}/logs/weight`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

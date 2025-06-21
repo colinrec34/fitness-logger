@@ -10,6 +10,8 @@ import {
 } from "recharts"
 import Card from "../Card"
 
+const api = import.meta.env.VITE_API_URL || "http://localhost:8000"
+
 type WeightEntry = {
   id: number
   date: string
@@ -23,7 +25,7 @@ export default function WeightProgress() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const res = await fetch("http://localhost:8000/logs/weight")
+        const res = await fetch("http://localhost:8000/logs/weight`)
         const data = await res.json()
         setLogs(Array.isArray(data) ? data : [])
       } catch (err) {

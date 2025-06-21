@@ -10,6 +10,8 @@ import type { LatLngExpression } from "leaflet";
 import { formatDistanceToNowStrict } from "date-fns";
 import Card from "../Card"; // make sure this path is correct
 
+const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 type SurfLog = {
   id: number;
   date: string;
@@ -34,7 +36,7 @@ export default function SurfProgress() {
   const [latest, setLatest] = useState<SurfLog | null>(null);
 
   useEffect(() => {
-    fetch("http://localhost:8000/logs/surf")
+    fetch(`${api}/logs/surf`)
       .then((res) => res.json())
       .then((data: SurfLog[]) => {
         const sorted = [...data]

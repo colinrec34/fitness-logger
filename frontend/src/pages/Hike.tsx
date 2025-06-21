@@ -10,6 +10,8 @@ import {
 import type { LatLngExpression, LatLngBoundsExpression } from "leaflet";
 import type { Map as LeafletMap } from "leaflet";
 
+const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 type HikeApiResponse = {
   id: number;
   date: string;
@@ -80,8 +82,8 @@ export default function Hike() {
     const fetchAndImport = async () => {
       setLoading(true);
       try {
-        await fetch("http://localhost:8000/import/hikes", { method: "POST" });
-        const res = await fetch("http://localhost:8000/logs/hikes");
+        await fetch(`${api}/import/hikes`, { method: "POST" });
+        const res = await fetch(`${api}/logs/hikes`);
         const data = await res.json();
 
         setHikes(
