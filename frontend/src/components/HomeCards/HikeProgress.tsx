@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns"
 import Card from "../Card"
 
 const api = import.meta.env.VITE_API_URL || "http://localhost:8000"
+console.log("Using API URL:", api)
 
 type HikeApiResponse = {
   id: number

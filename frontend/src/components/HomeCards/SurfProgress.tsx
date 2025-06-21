@@ -11,6 +11,7 @@ import { formatDistanceToNowStrict } from "date-fns";
 import Card from "../Card"; // make sure this path is correct
 
 const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+console.log("Using API URL:", api);
 
 type SurfLog = {
   id: number;

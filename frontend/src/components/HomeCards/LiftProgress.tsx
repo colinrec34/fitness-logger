@@ -3,6 +3,7 @@ import Card from "../Card";
 import { formatDistanceToNow } from "date-fns";
 
 const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+console.log("Using API URL:", api);
 
 export type LiftSet = { reps: number; weight: number };
 export type LiftingLog = {

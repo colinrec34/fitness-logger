@@ -4,7 +4,8 @@ import type { LatLngExpression, LatLngBoundsExpression } from "leaflet"
 import { formatDistanceToNow } from "date-fns"
 import Card from "../Card"
 
-const api = import.meta.env.VITE_API_URL || "http://localhost:8000"
+const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+console.log("Using API URL:", api);
 
 type RunApiResponse = {
   id: number
