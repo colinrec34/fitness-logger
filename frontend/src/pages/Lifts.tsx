@@ -57,7 +57,7 @@ export default function Lifts() {
     const fetchLogForDate = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8000/logs/lifting/${date}`
+          `${api}/logs/lifting/${date}`
         );
         if (!response.ok) return;
 
