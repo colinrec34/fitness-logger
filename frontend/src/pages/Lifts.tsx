@@ -56,9 +56,7 @@ export default function Lifts() {
   useEffect(() => {
     const fetchLogForDate = async () => {
       try {
-        const response = await fetch(
-          `${api}/logs/lifting/${date}`
-        );
+        const response = await fetch(`${api}/logs/lifting/${date}`);
         if (!response.ok) return;
 
         const data = await response.json();
@@ -311,6 +309,14 @@ export default function Lifts() {
       </div>
     );
   };
+
+  // Format data for each lift type
+  const squatData = formatTypedData("squat");
+  const benchPressData = formatTypedData("press", "Bench");
+  const overheadPressData = formatTypedData("press", "Overhead");
+  const deadliftData = formatTypedData("deadlift", "Deadlift");
+  const powerCleanData = formatTypedData("deadlift", "Power Clean");
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
       {/* LEFT COLUMN: Full Logging Form */}
@@ -435,159 +441,209 @@ export default function Lifts() {
           Performance Over Time
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="bg-slate-800 p-4 rounded shadow">
-            <h3 className="text-white text-lg mb-2">Squat</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={formatTypedData("squat")} margin={{ top: 10, right: 20, bottom: 5, left: -24 }}>
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const { date, weight } = payload[0].payload;
-                      return (
-                        <div className="bg-slate-700 text-white p-2 rounded text-sm shadow">
-                          <div className="font-semibold">
-                            {new Date(date).toLocaleDateString()}
+          {squatData.length === 0 && (
+            <div className="bg-slate-800 p-4 rounded shadow">
+              <h3 className="text-white text-lg mb-2">Squat</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart
+                  data={squatData}
+                  margin={{ top: 10, right: 20, bottom: 5, left: -24 }}
+                >
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const { date, weight } = payload[0].payload;
+                        return (
+                          <div className="bg-slate-700 text-white p-2 rounded text-sm shadow">
+                            <div className="font-semibold">
+                              {new Date(date).toLocaleDateString()}
+                            </div>
+                            <div>
+                              Weight:{" "}
+                              <span className="font-bold">{weight} lbs</span>
+                            </div>
                           </div>
-                          <div>
-                            Weight:{" "}
-                            <span className="font-bold">{weight} lbs</span>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Line type="monotone" dataKey="weight" stroke="white" dot={false}/>
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="weight"
+                    stroke="white"
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           {/* Bench Press */}
-          <div className="bg-slate-800 p-4 rounded shadow">
-            <h3 className="text-white text-lg mb-2">Bench Press</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={formatTypedData("press", "Bench")} margin={{ top: 10, right: 20, bottom: 5, left: -24 }}>
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const { date, weight } = payload[0].payload;
-                      return (
-                        <div className="bg-slate-700 text-white p-2 rounded text-sm shadow">
-                          <div className="font-semibold">
-                            {new Date(date).toLocaleDateString()}
+          {benchPressData.length === 0 && (
+            <div className="bg-slate-800 p-4 rounded shadow">
+              <h3 className="text-white text-lg mb-2">Bench Press</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart
+                  data={benchPressData}
+                  margin={{ top: 10, right: 20, bottom: 5, left: -24 }}
+                >
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const { date, weight } = payload[0].payload;
+                        return (
+                          <div className="bg-slate-700 text-white p-2 rounded text-sm shadow">
+                            <div className="font-semibold">
+                              {new Date(date).toLocaleDateString()}
+                            </div>
+                            <div>
+                              Weight:{" "}
+                              <span className="font-bold">{weight} lbs</span>
+                            </div>
                           </div>
-                          <div>
-                            Weight:{" "}
-                            <span className="font-bold">{weight} lbs</span>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Line type="monotone" dataKey="weight" stroke="skyblue" dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="weight"
+                    stroke="skyblue"
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           {/* Overhead Press */}
-          <div className="bg-slate-800 p-4 rounded shadow">
-            <h3 className="text-white text-lg mb-2">Overhead Press</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={formatTypedData("press", "Overhead")} margin={{ top: 10, right: 20, bottom: 5, left: -24 }}>
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const { date, weight } = payload[0].payload;
-                      return (
-                        <div className="bg-slate-700 text-white p-2 rounded text-sm shadow">
-                          <div className="font-semibold">
-                            {new Date(date).toLocaleDateString()}
+          {overheadPressData.length === 0 && (
+            <div className="bg-slate-800 p-4 rounded shadow">
+              <h3 className="text-white text-lg mb-2">Overhead Press</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart
+                  data={overheadPressData}
+                  margin={{ top: 10, right: 20, bottom: 5, left: -24 }}
+                >
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const { date, weight } = payload[0].payload;
+                        return (
+                          <div className="bg-slate-700 text-white p-2 rounded text-sm shadow">
+                            <div className="font-semibold">
+                              {new Date(date).toLocaleDateString()}
+                            </div>
+                            <div>
+                              Weight:{" "}
+                              <span className="font-bold">{weight} lbs</span>
+                            </div>
                           </div>
-                          <div>
-                            Weight:{" "}
-                            <span className="font-bold">{weight} lbs</span>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Line type="monotone" dataKey="weight" stroke="purple" dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="weight"
+                    stroke="purple"
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           {/* Deadlift */}
-          <div className="bg-slate-800 p-4 rounded shadow">
-            <h3 className="text-white text-lg mb-2">Deadlift</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={formatTypedData("deadlift", "Deadlift")} margin={{ top: 10, right: 20, bottom: 5, left: -24 }}>
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const { date, weight } = payload[0].payload;
-                      return (
-                        <div className="bg-slate-700 text-white p-2 rounded text-sm shadow">
-                          <div className="font-semibold">
-                            {new Date(date).toLocaleDateString()}
+          {deadliftData.length === 0 && (
+            <div className="bg-slate-800 p-4 rounded shadow">
+              <h3 className="text-white text-lg mb-2">Deadlift</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart
+                  data={deadliftData}
+                  margin={{ top: 10, right: 20, bottom: 5, left: -24 }}
+                >
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const { date, weight } = payload[0].payload;
+                        return (
+                          <div className="bg-slate-700 text-white p-2 rounded text-sm shadow">
+                            <div className="font-semibold">
+                              {new Date(date).toLocaleDateString()}
+                            </div>
+                            <div>
+                              Weight:{" "}
+                              <span className="font-bold">{weight} lbs</span>
+                            </div>
                           </div>
-                          <div>
-                            Weight:{" "}
-                            <span className="font-bold">{weight} lbs</span>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Line type="monotone" dataKey="weight" stroke="orange" dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="weight"
+                    stroke="orange"
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           {/* Power Clean */}
-          <div className="bg-slate-800 p-4 rounded shadow">
-            <h3 className="text-white text-lg mb-2">Power Clean</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={formatTypedData("deadlift", "Power Clean")} margin={{ top: 10, right: 20, bottom: 5, left: -24 }}>
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const { date, weight } = payload[0].payload;
-                      return (
-                        <div className="bg-slate-700 text-white p-2 rounded text-sm shadow">
-                          <div className="font-semibold">
-                            {new Date(date).toLocaleDateString()}
+          {powerCleanData.length === 0 && (
+            <div className="bg-slate-800 p-4 rounded shadow">
+              <h3 className="text-white text-lg mb-2">Power Clean</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart
+                  data={powerCleanData}
+                  margin={{ top: 10, right: 20, bottom: 5, left: -24 }}
+                >
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const { date, weight } = payload[0].payload;
+                        return (
+                          <div className="bg-slate-700 text-white p-2 rounded text-sm shadow">
+                            <div className="font-semibold">
+                              {new Date(date).toLocaleDateString()}
+                            </div>
+                            <div>
+                              Weight:{" "}
+                              <span className="font-bold">{weight} lbs</span>
+                            </div>
                           </div>
-                          <div>
-                            Weight:{" "}
-                            <span className="font-bold">{weight} lbs</span>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Line type="monotone" dataKey="weight" stroke="green" dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="weight"
+                    stroke="green"
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
     </div>
