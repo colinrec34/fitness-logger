@@ -65,9 +65,17 @@ export default function Lifts() {
         if (data) {
           setSquat(data.squat);
           setPressType(data.press_type);
-          setPress(data.press);
+          setPress(
+            data.press?.warmup && data.press?.work
+              ? data.press
+              : { warmup: [], work: [] }
+          );
           setPullType(data.deadlift_type || "Deadlift");
-          setDeadlift(data.deadlift);
+          setDeadlift(
+            data.deadlift?.warmup && data.deadlift?.work
+              ? data.deadlift
+              : { warmup: [], work: [] }
+          );
           setPullups(data.pullups || []);
           setNotes(data.notes || "");
         }
@@ -346,7 +354,7 @@ export default function Lifts() {
                   <option value="Overhead">Overhead Press</option>
                 </select>
               </div>
-              {renderLiftSection(press, setPress)}
+              {press && renderLiftSection(press, setPress)}
             </div>
 
             {/* Deadlift */}
@@ -365,7 +373,7 @@ export default function Lifts() {
                   <option value="Power Clean">Power Clean</option>
                 </select>
               </div>
-              {renderLiftSection(deadlift, setDeadlift, true)}
+              {deadlift && renderLiftSection(deadlift, setDeadlift, true)}
             </div>
           </div>
 

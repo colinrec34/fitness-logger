@@ -25,7 +25,7 @@ export default function WeightProgress() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const res = await fetch("http://localhost:8000/logs/weight`)
+        const res = await fetch(`${api}/logs/weight`)
         const data = await res.json()
         setLogs(Array.isArray(data) ? data : [])
       } catch (err) {
