@@ -441,7 +441,7 @@ export default function Lifts() {
           Performance Over Time
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {squatData.length === 0 && (
+          {squatData.length > 0 && (
             <div className="bg-slate-800 p-4 rounded shadow">
               <h3 className="text-white text-lg mb-2">Squat</h3>
               <ResponsiveContainer width="100%" height={200}>
@@ -482,7 +482,7 @@ export default function Lifts() {
           )}
 
           {/* Bench Press */}
-          {benchPressData.length === 0 && (
+          {benchPressData.length > 0 && (
             <div className="bg-slate-800 p-4 rounded shadow">
               <h3 className="text-white text-lg mb-2">Bench Press</h3>
               <ResponsiveContainer width="100%" height={200}>
@@ -523,7 +523,7 @@ export default function Lifts() {
           )}
 
           {/* Overhead Press */}
-          {overheadPressData.length === 0 && (
+          {overheadPressData.length > 0 && (
             <div className="bg-slate-800 p-4 rounded shadow">
               <h3 className="text-white text-lg mb-2">Overhead Press</h3>
               <ResponsiveContainer width="100%" height={200}>
@@ -564,7 +564,7 @@ export default function Lifts() {
           )}
 
           {/* Deadlift */}
-          {deadliftData.length === 0 && (
+          {deadliftData.length > 0 && (
             <div className="bg-slate-800 p-4 rounded shadow">
               <h3 className="text-white text-lg mb-2">Deadlift</h3>
               <ResponsiveContainer width="100%" height={200}>
@@ -605,7 +605,7 @@ export default function Lifts() {
           )}
 
           {/* Power Clean */}
-          {powerCleanData.length === 0 && (
+          {powerCleanData.length > 0 && (
             <div className="bg-slate-800 p-4 rounded shadow">
               <h3 className="text-white text-lg mb-2">Power Clean</h3>
               <ResponsiveContainer width="100%" height={200}>
