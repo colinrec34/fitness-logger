@@ -7,6 +7,7 @@ const links = [
   { name: 'Hikes', path: '/log/hikes' },
   { name: 'Surf', path: '/log/surf' },
   { name: 'Runs', path: '/log/run' },
+  { name: 'Snorkeling', path: '/log/snorkel' },
 ]
 
 export default function Navbar() {

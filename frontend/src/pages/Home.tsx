@@ -3,6 +3,7 @@ import LiftProgress from "../components/HomeCards/LiftProgress";
 import HikeProgress from "../components/HomeCards/HikeProgress";
 import RunProgress from "../components/HomeCards/RunProgress";
 import SurfProgress from "../components/HomeCards/SurfProgress";
+import SnorkelingProgress from "../components/HomeCards/SnorkelingProgress";
 
 import CardGrid from "../components/CardGrid";
 
@@ -27,6 +28,7 @@ export default function Home() {
           <SurfProgress />
           <HikeProgress />
           <RunProgress />
+          <SnorkelingProgress />
         </CardGrid>
       </section>
     </div>

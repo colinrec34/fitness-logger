@@ -9,6 +9,7 @@ import Lifts from './pages/Lifts'
 import Hikes from './pages/Hike'
 import Surf from './pages/Surf'
 import Run from './pages/Run'
+import Snorkel from './pages/Snorkeling'
 
 export default function App() {
   return (
@@ -25,7 +26,7 @@ export default function App() {
               <Route path="/log/hikes" element={<Hikes />} />
               <Route path="/log/surf" element={<Surf />} />
               <Route path="/log/run" element={<Run />} />
-              {/* Add more routes as needed */}
+              <Route path="/log/snorkel" element={<Snorkel />} />
             </Routes>
           </main>
         </div>
