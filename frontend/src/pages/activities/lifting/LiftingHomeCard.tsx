@@ -1,42 +1,16 @@
 import { useEffect, useState } from "react";
 import Card from "../../../components/Card";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
+import { supabase } from "../../../api/supabaseClient";
 
-const api = import.meta.env.VITE_API_URL || "http://localhost:8000"
+const LIFTING_ACTIVITY_ID = "e07d19fd-c9a0-42f0-a110-01d532a5b66d";
 
-export type LiftSet = { reps: number; weight: number };
-export type LiftingLog = {
-  id: number;
-  log_date: string;
-  press_type: "Bench" | "Overhead";
-  deadlift_type?: "Deadlift" | "Power Clean";
-  squat: { work: LiftSet[] };
-  press: { work: LiftSet[] };
-  deadlift: { work: LiftSet[] };
-  pullups?: { reps: number }[];
-  notes: string;
-};
-
-function getLatestWeight(
-  logs: LiftingLog[],
-  filterFn: (log: LiftingLog) => boolean,
-  getSet: (log: LiftingLog) => LiftSet[] | { reps: number }[]
-): number | null {
-  const filtered = logs
-    .filter(filterFn)
-    .sort((a, b) => b.log_date.localeCompare(a.log_date));
-  if (filtered.length === 0) return null;
-  const sets = getSet(filtered[0]);
-  if (!sets || sets.length === 0) return null;
-  if ("weight" in sets[0]) {
-    return (sets as LiftSet[])[0].weight;
-  } else {
-    return (sets as { reps: number }[])[0].reps;
-  }
-}
+import type {
+  LogRow,
+} from "./types"
 
 function estimateSessionsToGoal(
-  current: number | null,
+  current: number,
   goal: number,
   increment = 5
 ): number | null {
@@ -45,30 +19,40 @@ function estimateSessionsToGoal(
 }
 
 export default function LiftProgress() {
-  const [logs, setLogs] = useState<LiftingLog[]>([]);
+  const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Default values for goals
   const [goal, setGoal] = useState({
     squat: 300,
-    press: 150,
+    bench: 225,
     deadlift: 350,
+    pullupsTotal: 100,
+    overhead: 185,
+    clean: 185,
   });
 
   useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const res = await fetch(`${api}/logs/lifting`);
-        const data = await res.json();
-        setLogs(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Failed to fetch lifting logs:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    async function fetchAllLogs() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("activity_id", LIFTING_ACTIVITY_ID)
+        .order("datetime", { ascending: true });
 
-    fetchLogs();
+      if (error) {
+        console.error("Error fetching logs:", error);
+        setLogs([]);
+      } else if (data) {
+        setLogs(data);
+      }
+      setLoading(false);
+    }
+    fetchAllLogs();
   }, []);
 
+  // Loading state
   if (loading) {
     return (
       <Card title="🏋️‍♂️ Latest Lift">
@@ -77,124 +61,184 @@ export default function LiftProgress() {
     );
   }
 
+  // If no logs loaded
   if (logs.length === 0) {
     return (
       <Card title="🏋️‍♂️ Latest Lift">
-        <p className="text-gray-400 italic">No lifting logs recorded yet.</p>
+        <p className="text-gray-400 italic">No logs recorded yet.</p>
       </Card>
     );
   }
 
   const sortedLogs = [...logs].sort((a, b) =>
-    b.log_date.localeCompare(a.log_date)
+    b.datetime.localeCompare(a.datetime)
   );
   const latest = sortedLogs[0];
-  const relativeDate = latest?.log_date
-    ? formatDistanceToNow(new Date(latest.log_date), { addSuffix: true })
+  const formattedDatetime = latest.datetime ? format( new Date(latest.datetime), "MMM d, yyyy")
+  : "";
+  const relativeDate = latest?.datetime
+    ? formatDistanceToNow(new Date(latest.datetime), { addSuffix: true })
     : "";
 
-  const squat = getLatestWeight(
-    logs,
-    () => true,
-    (log) => log.squat.work
-  );
-  const press = getLatestWeight(
-    logs,
-    (log) => log.press_type === latest.press_type,
-    (log) => log.press.work
-  );
-  const deadlift = getLatestWeight(
-    logs,
-    (log) =>
-      (log.deadlift_type || "Deadlift") ===
-      (latest.deadlift_type || "Deadlift"),
-    (log) => log.deadlift.work
-  );
-  const pullups = getLatestWeight(
-    logs,
-    () => true,
-    (log) => log.pullups ?? []
-  );
+  const squat = latest.data.squat?.work[0].weight ?? null;
+  const bench = latest.data.bench?.work[0].weight ?? null;
+  const deadlift = latest.data.deadlift?.work[0].weight ?? null;
+  const pullupsTotal = latest.data.pullups
+    ? latest.data.pullups.reduce((sum, set) => sum + (set.reps || 0), 0)
+    : 0;
+
+  const overhead = latest.data.overhead?.work[0].weight ?? null;
+  const clean = latest.data.clean?.work[0].weight ?? null;
 
   return (
     <Card
       title="🏋️‍♂️ Latest Lift"
       subtitle={
         <span className="text-gray-400">
-          {latest.log_date} · {relativeDate}
+          {formattedDatetime} · {relativeDate}
         </span>
       }
       footer={
-        latest.notes && (
+        latest.data.notes && (
           <p className="italic text-gray-400 whitespace-pre-line max-w-md">
-            "{latest.notes}"
+            "{latest.data.notes}"
           </p>
         )
       }
     >
-      <div className="mb-4">
-        <p className="mb-1 font-semibold">
-          Squat: <span className="ml-2 font-bold">{squat} lbs</span>
-        </p>
-        <p className="text-sm text-gray-300">
-          Goal:
-          <input
-            type="number"
-            className="ml-2 w-20 px-1 py-0.5 rounded bg-slate-700 text-white border border-slate-600"
-            value={goal.squat}
-            onChange={(e) =>
-              setGoal({ ...goal, squat: Number(e.target.value) })
-            }
-          />{" "}
-          → {estimateSessionsToGoal(squat, goal.squat)} sessions
-        </p>
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <div className="mb-4">
+            <p className="mb-1 font-semibold">
+              Squat: <span className="ml-2 font-bold">{squat} lbs</span>
+            </p>
+            <p className="text-sm text-gray-300">
+              Goal:
+              <input
+                type="number"
+                className="ml-2 w-20 px-1 py-0.5 rounded bg-slate-700 text-white border border-slate-600"
+                value={goal.squat}
+                onChange={(e) =>
+                  setGoal({ ...goal, squat: Number(e.target.value) })
+                }
+              />{" "}
+              →{" "}
+              {typeof squat === "number"
+                ? estimateSessionsToGoal(squat, goal.squat)
+                : "—"}{" "}
+              sessions
+            </p>
+          </div>
 
-      <div className="mb-4">
-        <p className="mb-1 font-semibold">
-          {latest.press_type}:{" "}
-          <span className="ml-2 font-bold">{press} lbs</span>
-        </p>
-        <p className="text-sm text-gray-300">
-          Goal:
-          <input
-            type="number"
-            className="ml-2 w-20 px-1 py-0.5 rounded bg-slate-700 text-white border border-slate-600"
-            value={goal.press}
-            onChange={(e) =>
-              setGoal({ ...goal, press: Number(e.target.value) })
-            }
-          />{" "}
-          → {estimateSessionsToGoal(press, goal.press)} sessions
-        </p>
-      </div>
+          <div className="mb-4">
+            <p className="mb-1 font-semibold">
+              Bench Press: <span className="ml-2 font-bold">{bench} lbs</span>
+            </p>
+            <p className="text-sm text-gray-300">
+              Goal:
+              <input
+                type="number"
+                className="ml-2 w-20 px-1 py-0.5 rounded bg-slate-700 text-white border border-slate-600"
+                value={goal.bench}
+                onChange={(e) =>
+                  setGoal({ ...goal, bench: Number(e.target.value) })
+                }
+              />{" "}
+              →{" "}
+              {typeof bench === "number"
+                ? estimateSessionsToGoal(bench, goal.bench)
+                : "—"}{" "}
+              sessions
+            </p>
+          </div>
 
-      <div className="mb-4">
-        <p className="mb-1 font-semibold">
-          {latest.deadlift_type || "Deadlift"}:{" "}
-          <span className="ml-2 font-bold">{deadlift} lbs</span>
-        </p>
-        <p className="text-sm text-gray-300">
-          Goal:
-          <input
-            type="number"
-            className="ml-2 w-20 px-1 py-0.5 rounded bg-slate-700 text-white border border-slate-600"
-            value={goal.deadlift}
-            onChange={(e) =>
-              setGoal({ ...goal, deadlift: Number(e.target.value) })
-            }
-          />{" "}
-          → {estimateSessionsToGoal(deadlift, goal.deadlift)} sessions
-        </p>
-      </div>
-
-      {pullups != null && (
-        <div className="mb-4">
-          <p className="mb-1 font-semibold">
-            Pull-ups: <span className="ml-2 font-bold">{pullups} reps</span>
-          </p>
+          <div className="mb-4">
+            <p className="mb-1 font-semibold">
+              Deadlift:<span className="ml-2 font-bold">{deadlift} lbs</span>
+            </p>
+            <p className="text-sm text-gray-300">
+              Goal:
+              <input
+                type="number"
+                className="ml-2 w-20 px-1 py-0.5 rounded bg-slate-700 text-white border border-slate-600"
+                value={goal.deadlift}
+                onChange={(e) =>
+                  setGoal({ ...goal, deadlift: Number(e.target.value) })
+                }
+              />{" "}
+              →{" "}
+              {typeof deadlift === "number"
+                ? estimateSessionsToGoal(deadlift, goal.deadlift)
+                : "—"}{" "}
+              sessions
+            </p>
+          </div>
         </div>
-      )}
+
+        <div>
+          <div className="mb-4">
+            <p className="mb-1 font-semibold">
+              Total Pullups:{" "}
+              <span className="ml-2 font-bold">{pullupsTotal} pullups</span>
+            </p>
+            <p className="text-sm text-gray-300">
+              Goal:
+              <input
+                type="number"
+                className="ml-2 w-20 px-1 py-0.5 rounded bg-slate-700 text-white border border-slate-600"
+                value={goal.pullupsTotal}
+                onChange={(e) =>
+                  setGoal({ ...goal, pullupsTotal: Number(e.target.value) })
+                }
+              />{" "}
+            </p>
+          </div>
+
+          <div className="mb-4">
+            <p className="mb-1 font-semibold">
+              Overhead Press: <span className="ml-2 font-bold">{overhead} lbs</span>
+            </p>
+            <p className="text-sm text-gray-300">
+              Goal:
+              <input
+                type="number"
+                className="ml-2 w-20 px-1 py-0.5 rounded bg-slate-700 text-white border border-slate-600"
+                value={goal.overhead}
+                onChange={(e) =>
+                  setGoal({ ...goal, overhead: Number(e.target.value) })
+                }
+              />{" "}
+              →{" "}
+              {typeof overhead === "number"
+                ? estimateSessionsToGoal(overhead, goal.overhead)
+                : "—"}{" "}
+              sessions
+            </p>
+          </div>
+
+          <div className="mb-4">
+            <p className="mb-1 font-semibold">
+              Clean: <span className="ml-2 font-bold">{clean} lbs</span>
+            </p>
+            <p className="text-sm text-gray-300">
+              Goal:
+              <input
+                type="number"
+                className="ml-2 w-20 px-1 py-0.5 rounded bg-slate-700 text-white border border-slate-600"
+                value={goal.clean}
+                onChange={(e) =>
+                  setGoal({ ...goal, clean: Number(e.target.value) })
+                }
+              />{" "}
+              →{" "}
+              {typeof clean === "number"
+                ? estimateSessionsToGoal(clean, goal.clean)
+                : "—"}{" "}
+              sessions
+            </p>
+          </div>
+        </div>
+      </div>
     </Card>
   );
 }

@@ -13,37 +13,12 @@ import { supabase } from "../../../api/supabaseClient";
 
 const LIFTING_ACTIVITY_ID = "e07d19fd-c9a0-42f0-a110-01d532a5b66d";
 
-interface SetEntry {
-  reps: number;
-  weight?: number; // optional for bodyweight exercises
-  sets?: number; // optional, default 1 if missing
-}
-
-interface LiftSection {
-  warmup: SetEntry[];
-  work: SetEntry[];
-}
-
-interface LiftingLogData {
-  squat?: LiftSection;
-  bench?: LiftSection;
-  overhead?: LiftSection;
-  deadlift?: LiftSection;
-  clean?: LiftSection;
-  pullups?: { reps: number; sets?: number }[];
-  notes?: string;
-}
-
-interface LogRow {
-  id: number;
-  user_id: string;
-  activity_id: string;
-  datetime: string;
-  location_id?: number;
-  data: LiftingLogData;
-  created_at?: string;
-  updated_at?: string;
-}
+import type {
+  SetEntry,
+  LiftSection,
+  // LiftingLogData,
+  LogRow,
+} from "./types";
 
 export default function Lifts() {
   const [date, setDate] = useState(() => {
@@ -118,16 +93,18 @@ export default function Lifts() {
 
       const start = new Date(selectedDate);
       start.setHours(0, 0, 0, 0);
+      const startISO = start.toISOString(); // e.g. "2025-07-18T07:00:00.000Z"
 
       const end = new Date(selectedDate);
       end.setHours(23, 59, 59, 999);
+      const endISO = end.toISOString();
 
       const { data, error } = await supabase
         .from("logs")
         .select("*")
         .eq("activity_id", LIFTING_ACTIVITY_ID)
-        .gte("datetime", start)
-        .lte("datetime", end)
+        .gte("datetime", startISO)
+        .lte("datetime", endISO)
         .limit(1)
         .single();
 
@@ -268,22 +245,35 @@ export default function Lifts() {
 
   // Prepare data for charts: max weight in working sets per date
   const formatTypedData = (
-    lift: "squat" | "bench" | "overhead" | "deadlift" | "clean"
+    lift: "squat" | "bench" | "deadlift" | "pullups" | "overhead" | "clean"
   ) => {
     return logs
       .filter((log) => log.data[lift])
       .map((log) => {
-        const sets = log.data[lift]?.work || [];
-        const maxWeight = Math.max(
-          ...sets.map((s) => (typeof s.weight === "number" ? s.weight : 0))
-        );
+        if (lift === "pullups") {
+          const sets = log.data.pullups || [];
+          const totalReps = sets.reduce(
+            (sum, set) => sum + set.reps * (set.sets ?? 1),
+            0
+          );
 
-        return {
-          date: log.datetime,
-          weight: maxWeight,
-        };
+          return {
+            date: log.datetime,
+            weight: totalReps, // treating reps as the "weight" value
+          };
+        } else {
+          const sets = log.data[lift]?.work || [];
+          const maxWeight = Math.max(
+            ...sets.map((s) => (typeof s.weight === "number" ? s.weight : 0))
+          );
+
+          return {
+            date: log.datetime,
+            weight: maxWeight,
+          };
+        }
       })
-      .filter((entry) => entry.weight > 0) // filter zero weight entries
+      .filter((entry) => entry.weight > 0)
       .sort((a, b) => a.date.localeCompare(b.date));
   };
 
@@ -535,6 +525,33 @@ export default function Lifts() {
           <ChartSection
             title={`Deadlift`}
             data={formatTypedData("deadlift")}
+            dataKey="weight"
+            color="#f87171"
+          />
+        </div>
+
+        <div className="bg-slate-800 p-4 rounded-lg shadow-md">
+          <ChartSection
+            title="Pullups"
+            data={formatTypedData("pullups")}
+            dataKey="weight"
+            color="#4ade80"
+          />
+        </div>
+
+        <div className="bg-slate-800 p-4 rounded-lg shadow-md">
+          <ChartSection
+            title={`Overhead Press`}
+            data={formatTypedData("overhead")}
+            dataKey="weight"
+            color="#60a5fa"
+          />
+        </div>
+
+        <div className="bg-slate-800 p-4 rounded-lg shadow-md">
+          <ChartSection
+            title={`Power Clean`}
+            data={formatTypedData("clean")}
             dataKey="weight"
             color="#f87171"
           />

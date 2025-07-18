@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import WeightProgress from "./WeightProgress"
+import WeightProgress from "./WeightHomeCard"
 
 const api = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
