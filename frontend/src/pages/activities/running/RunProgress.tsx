@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { MapContainer, TileLayer, Polyline, Tooltip, useMap } from "react-leaflet"
 import type { LatLngExpression, LatLngBoundsExpression } from "leaflet"
 import { formatDistanceToNow } from "date-fns"
-import Card from "../Card"
+import Card from "../../../components/Card";
 
 const api = import.meta.env.VITE_API_URL || "http://localhost:8000"
 

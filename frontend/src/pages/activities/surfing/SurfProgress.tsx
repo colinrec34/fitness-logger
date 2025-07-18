@@ -8,7 +8,7 @@ import {
 } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import { formatDistanceToNowStrict } from "date-fns";
-import Card from "../Card"; // make sure this path is correct
+import Card from "../../../components/Card";
 
 const api = import.meta.env.VITE_API_URL || "http://localhost:8000"
 

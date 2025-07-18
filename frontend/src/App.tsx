@@ -1,17 +1,61 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import 'leaflet/dist/leaflet.css'
+import { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import "leaflet/dist/leaflet.css";
 
-import Navbar from './components/Navbar'
-import ParticlesBackground from './components/ParticlesBackground'
-import Home from './pages/Home'
-import Weight from './pages/Weight'
-import Lifts from './pages/Lifts'
-import Hikes from './pages/Hike'
-import Surf from './pages/Surf'
-import Run from './pages/Run'
-import Snorkel from './pages/Snorkeling'
+import { supabase } from "./api/supabaseClient"; // adjust import path
+
+import Navbar from "./components/Navbar";
+import ParticlesBackground from "./components/ParticlesBackground";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+import Login from "./pages/Login";
+import Home from "./pages/Home";
+
+import Weight from "./pages/activities/weight/weight";
+import Lifts from "./pages/activities/lifting/lifting";
+import Hikes from "./pages/activities/hiking/hiking";
+import Surf from "./pages/activities/surfing/surfing";
+import Run from "./pages/activities/running/running";
+import Snorkel from "./pages/activities/snorkeling/snorkeling";
+
+// Map slug values from your DB to components
+const activityComponents: Record<string, React.FC> = {
+  weight: Weight,
+  lifting: Lifts,
+  hikes: Hikes,
+  surf: Surf,
+  run: Run,
+  snorkel: Snorkel,
+};
 
 export default function App() {
+  const [slugs, setSlugs] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchActivitySlugs() {
+      const { data, error } = await supabase.from("activities").select("slug");
+
+      if (error) {
+        console.error("Error fetching activity slugs:", error);
+        setLoading(false);
+        return;
+      }
+
+      if (data) {
+        const fetchedSlugs = data.map((item) => item.slug);
+        setSlugs(fetchedSlugs);
+      }
+      setLoading(false);
+    }
+
+    fetchActivitySlugs();
+  }, []);
+
+  if (loading) {
+    return <div className="text-white p-4">Loading...</div>;
+  }
+
   return (
     <div className="relative min-h-screen bg-[#0f172a] text-white overflow-hidden">
       <ParticlesBackground />
@@ -20,17 +64,38 @@ export default function App() {
           <Navbar />
           <main className="flex-grow p-4 w-full">
             <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/log/weight" element={<Weight />} />
-              <Route path="/log/lifts" element={<Lifts />} />
-              <Route path="/log/hikes" element={<Hikes />} />
-              <Route path="/log/surf" element={<Surf />} />
-              <Route path="/log/run" element={<Run />} />
-              <Route path="/log/snorkel" element={<Snorkel />} />
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Home />
+                  </ProtectedRoute>
+                }
+              />
+              {slugs.map((slug) => {
+                const Component = activityComponents[slug];
+                if (!Component) {
+                  // Skip slugs that don't have components yet
+                  return null;
+                }
+
+                return (
+                  <Route
+                    key={slug}
+                    path={`/${slug}`}
+                    element={
+                      <ProtectedRoute>
+                        <Component />
+                      </ProtectedRoute>
+                    }
+                  />
+                );
+              })}
             </Routes>
           </main>
         </div>
       </Router>
     </div>
-  )
+  );
 }

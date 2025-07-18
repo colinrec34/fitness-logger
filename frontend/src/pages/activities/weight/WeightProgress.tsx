@@ -8,7 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
-import Card from "../Card"
+import Card from "../../../components/Card";
 
 const api = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
