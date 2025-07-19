@@ -59,7 +59,7 @@ export default function WeightProgress() {
   }
 
   const chartData = logs.map((log) => ({
-    date: format(new Date(log.datetime), "MMM d, yyyy"),
+    date: format(new Date(log.datetime), "MMMM d, yyyy"),
     weight: log.data.weight,
   }));
 
@@ -68,7 +68,7 @@ export default function WeightProgress() {
   );
   const latest = sortedLogs[0];
   const formattedDatetime = latest.datetime
-    ? format(new Date(latest.datetime), "MMM d, yyyy")
+    ? format(new Date(latest.datetime), "MMMM d, yyyy")
     : "";
   const relativeDate = latest?.datetime
     ? formatDistanceToNow(new Date(latest.datetime), { addSuffix: true })
