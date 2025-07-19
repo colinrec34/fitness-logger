@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { formatDistanceToNow } from "date-fns"
+import { useEffect, useState } from "react";
+import { format, formatDistanceToNow } from "date-fns";
 import {
   LineChart,
   Line,
@@ -7,72 +7,88 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-} from "recharts"
+} from "recharts";
 import Card from "../../../components/Card";
 
-const api = import.meta.env.VITE_API_URL || "http://localhost:8000"
+import { supabase } from "../../../api/supabaseClient";
+const WEIGHT_ACTIVITY_ID = "3bacbc7e-4e70-435a-8927-ccc7ff1568b7";
 
-type WeightEntry = {
-  id: number
-  date: string
-  weight: number
-}
+import type { LogRow } from "./types";
 
 export default function WeightProgress() {
-  const [logs, setLogs] = useState<WeightEntry[]>([])
-  const [loading, setLoading] = useState(true)
+  const [logs, setLogs] = useState<LogRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  //Getting log data
   useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const res = await fetch(`${api}/logs/weight`)
-        const data = await res.json()
-        setLogs(Array.isArray(data) ? data : [])
-      } catch (err) {
-        console.error("Failed to fetch weight logs:", err)
-      } finally {
-        setLoading(false)
+    async function fetchAllLogs() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("activity_id", WEIGHT_ACTIVITY_ID)
+        .order("datetime", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching logs:", error);
+        setLogs([]);
+      } else if (data) {
+        setLogs(data);
       }
+      setLoading(false);
     }
+    fetchAllLogs();
+  }, []);
 
-    fetchLogs()
-  }, [])
-
+  // Loading State
   if (loading) {
     return (
       <Card title="⚖️ Body Weight">
         <p className="text-gray-400 italic">Loading...</p>
       </Card>
-    )
+    );
   }
 
-  if (!Array.isArray(logs) || logs.length === 0) {
+  // If no logs loaded
+  if (logs.length === 0) {
     return (
       <Card title="⚖️ Body Weight">
         <p className="text-gray-400 italic">No data available.</p>
       </Card>
-    )
+    );
   }
 
-  const sorted = [...logs].sort((a, b) => a.date.localeCompare(b.date))
-  const latest = sorted[sorted.length - 1]
-  const latestDate = latest?.date
-  const relativeDate = latestDate
-    ? formatDistanceToNow(new Date(latestDate), { addSuffix: true })
-    : ""
+  const chartData = logs.map((log) => ({
+    date: format(new Date(log.datetime), "MMM d, yyyy"),
+    weight: log.data.weight,
+  }));
+
+  const sortedLogs = [...logs].sort((a, b) =>
+    b.datetime.localeCompare(a.datetime)
+  );
+  const latest = sortedLogs[0];
+  const formattedDatetime = latest.datetime
+    ? format(new Date(latest.datetime), "MMM d, yyyy")
+    : "";
+  const relativeDate = latest?.datetime
+    ? formatDistanceToNow(new Date(latest.datetime), { addSuffix: true })
+    : "";
 
   return (
     <Card
-      title={`⚖️ Body Weight: ${latest?.weight} lbs`}
+      title={`⚖️ Body Weight: ${latest.data.weight} lbs`}
       subtitle={
         <span className="text-gray-400">
-          {latestDate} · {relativeDate}
+          {formattedDatetime} · {relativeDate}
         </span>
       }
     >
       <div className="w-full h-80">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={sorted} margin={{ top: 10, right: 20, bottom: 5, left: -24 }}>
+          <LineChart
+            data={chartData}
+            margin={{ top: 10, right: 20, bottom: 5, left: -24 }}
+          >
             <XAxis dataKey="date" fontSize={12} tickMargin={6} />
             <YAxis domain={[150, "auto"]} fontSize={12} />
             <Tooltip
@@ -96,5 +112,5 @@ export default function WeightProgress() {
         </ResponsiveContainer>
       </div>
     </Card>
-  )
+  );
 }

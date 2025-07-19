@@ -1,82 +1,81 @@
-import { useState, useEffect } from "react"
-import WeightProgress from "./WeightHomeCard"
+import { useState, useEffect } from "react";
+import WeightProgress from "./WeightHomeCard";
 
-const api = import.meta.env.VITE_API_URL || "http://localhost:8000"
-
-type WeightEntry = {
-  id: number
-  date: string
-  weight: number
-}
+import { supabase } from "../../../api/supabaseClient";
+import type { LogRow } from "./types"
+const WEIGHT_ACTIVITY_ID = "3bacbc7e-4e70-435a-8927-ccc7ff1568b7";
 
 export default function Weight() {
-  // Default datetime-local string for now, trimmed to "YYYY-MM-DDTHH:mm"
-  const [date, setDate] = useState(() => {
-    const now = new Date()
-    const localISO = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16)
-    return localISO
-  })
+  const [datetime, setDatetime] = useState(() => {
+    const now = new Date();
+    now.setSeconds(0, 0); // Remove seconds and ms
 
-  const [weight, setWeight] = useState<number | "">("")
-  const [logs, setLogs] = useState<WeightEntry[]>([])
+    const pad = (n: number) => n.toString().padStart(2, "0");
+
+    const year = now.getFullYear();
+    const month = pad(now.getMonth() + 1); // Months are 0-indexed
+    const day = pad(now.getDate());
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  });
+
+  const [logs, setLogs] = useState<LogRow[]>([]);
 
   useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const res = await fetch(`${api}/logs/weight`)
-        const data = await res.json()
-        setLogs(Array.isArray(data) ? data : [])
-      } catch (err) {
-        console.error("❌ Error fetching weight logs:", err)
+    async function fetchAllLogs() {
+      const { data, error } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("activity_id", WEIGHT_ACTIVITY_ID)
+        .order("datetime", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching logs:", error);
+        setLogs([]);
+      } else if (data) {
+        setLogs(data);
       }
     }
-    fetchLogs()
-  }, [])
+    fetchAllLogs();
+  }, []);
 
-  const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    if (value === "") {
-      setWeight("")
-    } else {
-      const num = parseFloat(value)
-      if (!isNaN(num)) setWeight(num)
-    }
-  }
+  const [weight, setWeight] = useState<number | "">("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError) throw authError;
+    if (!user) throw new Error("User not authenticated");
 
     if (weight === "") {
-      alert("Please enter a weight.")
-      return
+      alert("Please enter a weight.");
+      return;
     }
 
-    const payload = { date, weight }
+    const payload = {
+      user_id: user.id,
+      activity_id: WEIGHT_ACTIVITY_ID,
+      datetime: new Date(datetime).toISOString(),
+      data: {
+        weight: weight,
+      },
+    };
 
-    try {
-      const res = await fetch(`${api}/logs/weight`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
+    const { error } = await supabase
+      .from("logs")
+      .upsert(payload, { onConflict: "activity_id,datetime" });
 
-      if (!res.ok) throw new Error("Failed to save weight log")
+    if (error) throw error;
 
-      alert("✅ Weight logged successfully!")
-      setWeight("")
-      // Reset date to now after successful submit
-      const now = new Date()
-      const localISO = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, 16)
-      setDate(localISO)
-    } catch (err) {
-      console.error("❌ Error logging weight:", err)
-      alert("Error saving weight.")
-    }
-  }
+    alert("Lifting session logged!");
+  };
 
   return (
     <div className="flex justify-center px-4 py-8">
@@ -89,8 +88,8 @@ export default function Weight() {
               <label className="block mb-1 font-medium">Date & Time</label>
               <input
                 type="datetime-local"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                value={datetime}
+                onChange={(e) => setDatetime(e.target.value)}
                 className="w-full border px-3 py-2 rounded"
                 required
               />
@@ -101,7 +100,7 @@ export default function Weight() {
               <input
                 type="number"
                 value={weight}
-                onChange={handleWeightChange}
+                onChange={(e) => setWeight(e.target.value === "" ? "" : parseFloat(e.target.value))}
                 className="w-full border px-3 py-2 rounded"
                 step="0.1"
                 required
@@ -119,7 +118,9 @@ export default function Weight() {
 
         {/* RIGHT: Progress Chart */}
         <div className="w-full">
-          <h2 className="text-xl font-semibold text-white mb-4">Weight Progress</h2>
+          <h2 className="text-xl font-semibold text-white mb-4">
+            Weight Progress
+          </h2>
           {logs.length > 0 ? (
             <WeightProgress />
           ) : (
@@ -128,5 +129,5 @@ export default function Weight() {
         </div>
       </div>
     </div>
-  )
+  );
 }
