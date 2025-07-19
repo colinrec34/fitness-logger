@@ -1,9 +1,9 @@
-export interface SurfLogData = {
+export interface SurfLogData {
   location_id: string;
   board?: string;
-  wave_height: string;
-  duration_minutes: number;
-  waves_caught: number;
+  height?: string;
+  duration?: number;
+  waves?: number;
   notes?: string;
 };
 
@@ -18,11 +18,11 @@ export interface LocationRow {
 }
 
 export interface LogRow {
-  id: number;
+  id: string;
   user_id: string;
   activity_id: string;
   datetime: string;
-  location_id?: number;
+  location_id?: string;
   data: SurfLogData;
   created_at?: string;
   updated_at?: string;

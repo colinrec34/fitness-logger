@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { LatLngExpression, LatLngBoundsExpression } from "leaflet";
+import { format } from "date-fns";
 import {
   MapContainer,
   TileLayer,
@@ -10,10 +11,13 @@ import {
 import { supabase } from "../../../api/supabaseClient";
 const SURFING_ACTIVITY_ID = "0ddcfe52-2da0-47b6-a44a-e282f54ac21d";
 
-import type { SurfLogData, LocationRow, LogRow } from "./types";
+import type { LocationRow, LogRow } from "./types";
 
 export default function Surf() {
-  const [date, setDate] = useState(() => {
+  const [showAddLocation, setShowAddLocation] = useState(false);
+
+  // Datetime initialization to current time and variables
+  const [datetime, setDatetime] = useState(() => {
     const now = new Date();
     now.setSeconds(0, 0); // Remove seconds and ms
 
@@ -30,23 +34,55 @@ export default function Surf() {
 
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [locations, setLocations] = useState<LocationRow[]>([]);
+  const [newLocationName, setNewLocationName] = useState("");
+  const [newLat, setNewLat] = useState("");
+  const [newLon, setNewLon] = useState("");
 
   const [form, setForm] = useState({
     location: "",
     board: "",
-    wave_height: "",
-    duration_minutes: 0,
-    waves_caught: 0,
+    height: "",
+    duration: 0,
+    waves: 0,
     notes: "",
   });
 
-  const [boards, setBoards] = useState<string[]>([]);
-  const [newBoard, setNewBoard] = useState("");
+  async function addNewLocation() {
+    if (!newLocationName || !newLat || !newLon) {
+      alert("Please provide name, lat, and lon.");
+      return;
+    }
 
-  function addNewBoard() {
-    if (newBoard && !boards.includes(newBoard)) {
-      setBoards([...boards, newBoard]);
-      setNewBoard("");
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !user)
+        throw authError || new Error("User not authenticated");
+
+      const { error } = await supabase.from("locations").insert({
+        user_id: user.id,
+        activity_id: SURFING_ACTIVITY_ID,
+        name: newLocationName,
+        lat: parseFloat(newLat),
+        lon: parseFloat(newLon),
+      });
+
+      if (error) throw error;
+
+      setNewLocationName("");
+      setNewLat("");
+      setNewLon("");
+      // Re-fetch locations
+      const { data } = await supabase
+        .from("locations")
+        .select("*")
+        .eq("activity_id", SURFING_ACTIVITY_ID);
+      if (data) setLocations(data);
+    } catch (err) {
+      console.error("Failed to add location:", err);
+      alert("Error adding location.");
     }
   }
 
@@ -87,32 +123,60 @@ export default function Surf() {
   }, []);
 
   // Fetch single log for selected date and populate form
-    useEffect(() => {
-      async function fetchLogForDate() {
-        const selectedDate = new Date(date);
-  
-        const start = new Date(selectedDate);
-        start.setHours(0, 0, 0, 0);
-        const startISO = start.toISOString(); // e.g. "2025-07-18T07:00:00.000Z"
-  
-        const end = new Date(selectedDate);
-        end.setHours(23, 59, 59, 999);
-        const endISO = end.toISOString();
-  
-        const { data, error } = await supabase
-          .from("logs")
-          .select("*")
-          .eq("activity_id", SURFING_ACTIVITY_ID)
-          .gte("datetime", startISO)
-          .lte("datetime", endISO)
-          .limit(1)
-          .single();
-  
-        if (error) throw error;
+  useEffect(() => {
+    async function fetchLogForDate() {
+      const selectedDate = new Date(datetime);
+      if (isNaN(selectedDate.getTime())) {
+        console.warn("Invalid datetime value:", datetime);
+        return;
       }
-  
-      fetchLogForDate();
-    }, [date]);
+
+      const start = new Date(selectedDate);
+      start.setHours(0, 0, 0, 0);
+      const startISO = start.toISOString();
+
+      const end = new Date(selectedDate);
+      end.setHours(23, 59, 59, 999);
+      const endISO = end.toISOString();
+
+      const { data, error } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("activity_id", SURFING_ACTIVITY_ID)
+        .gte("datetime", startISO)
+        .lte("datetime", endISO)
+        .limit(1)
+        .maybeSingle();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching log:", error);
+        return;
+      }
+
+      if (data) {
+        setForm({
+          location: data.location || "",
+          board: data.board || "",
+          height: data.height || "",
+          duration: data.duration || 0,
+          waves: data.waves || 0,
+          notes: data.notes || "",
+        });
+      } else {
+        // If no log exists, reset the form
+        setForm({
+          location: "",
+          board: "",
+          height: "",
+          duration: 0,
+          waves: 0,
+          notes: "",
+        });
+      }
+    }
+
+    fetchLogForDate();
+  }, [datetime]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,16 +190,28 @@ export default function Surf() {
     if (!user) throw new Error("User not authenticated");
 
     try {
+      console.log("userId:", user.id);
+      console.log("locationName:", form.location);
+
+      const { data: locMatch, error: locError } = await supabase
+        .from("locations")
+        .select("id")
+        .eq("activity_id", SURFING_ACTIVITY_ID)
+        .eq("name", form.location)
+        .single();
+
+      if (locError) throw locError;
+
       const payload = {
         user_id: user.id,
         activity_id: SURFING_ACTIVITY_ID,
-        datetime: new Date(date).toISOString(),
-        location_id: form.location,
+        datetime: new Date(datetime).toISOString(),
+        location_id: locMatch.id,
         data: {
           board: form.board,
-          wave_height: form.wave_height,
-          duration_minutes: form.duration_minutes,
-          waves_caught: form.waves_caught,
+          height: form.height,
+          duration: form.duration,
+          waves: form.waves,
           notes: form.notes,
         },
       };
@@ -147,7 +223,7 @@ export default function Surf() {
 
       if (error) throw error;
 
-      alert("Lifting session logged!");
+      alert("Surfing session logged!");
 
       // Refresh logs for charts
       const { data: updatedLogs, error: fetchError } = await supabase
@@ -167,6 +243,53 @@ export default function Surf() {
     }
   };
 
+  function groupLogsByLocation(logs: LogRow[], locations: LocationRow[]) {
+    const locationMap = new Map(locations.map((loc) => [loc.id, loc]));
+
+    const grouped = new Map<
+      string,
+      {
+        name: string;
+        coordinates: [number, number];
+        logs: { id: string; date: string; waves: number }[];
+      }
+    >();
+
+    for (const log of logs) {
+      if (!log.location_id) continue;
+      const location = locationMap.get(log.location_id);
+      if (!location) continue;
+
+      const date = new Date(log.datetime).toLocaleDateString();
+
+      if (!grouped.has(location.id)) {
+        grouped.set(location.id, {
+          name: location.name,
+          coordinates: [location.lat, location.lon],
+          logs: [],
+        });
+      }
+
+      grouped.get(location.id)!.logs.push({
+        id: log.id,
+        date,
+        waves: log.data?.waves ?? 0,
+      });
+    }
+
+    return Array.from(grouped.values());
+  }
+
+  const groupedLogsByLocation = groupLogsByLocation(logs, locations);
+
+  // Statistics
+  const totalSessions = logs.length;
+  const totalWaves = logs.reduce((sum, log) => sum + (log.data?.waves ?? 0), 0);
+  const totalDuration = logs.reduce(
+    (sum, log) => sum + (log.data?.duration ?? 0),
+    0
+  );
+
   return (
     <div className="flex flex-col md:flex-row gap-8 p-6">
       {/* Left Column */}
@@ -179,10 +302,10 @@ export default function Surf() {
           <div>
             <label className="block mb-1">Date</label>
             <input
-              type="date"
+              type="datetime-local"
               className="w-full p-2 rounded bg-slate-700 text-white"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              value={datetime}
+              onChange={(e) => setDatetime(e.target.value)}
             />
           </div>
 
@@ -193,81 +316,70 @@ export default function Surf() {
               value={form.location}
               onChange={(e) => setForm({ ...form, location: e.target.value })}
             >
+              <option value="">Select location...</option>
               {locations.map((loc) => (
                 <option key={loc.name} value={loc.name}>
                   {loc.name}
                 </option>
               ))}
             </select>
-            <div className="mt-2 space-y-2">
-              <input
-                className="w-full p-2 rounded bg-slate-700 text-white"
-                placeholder="Add new location name"
-                value={newLocation}
-                onChange={(e) => setNewLocation(e.target.value)}
-              />
-              <div className="flex gap-2">
+
+            <button
+              type="button"
+              className="mt-2 text-blue-400"
+              onClick={() => setShowAddLocation((prev) => !prev)}
+            >
+              {showAddLocation ? "Cancel" : "+ Add new location"}
+            </button>
+
+            {showAddLocation && (
+              <div className="mt-2 space-y-2">
                 <input
-                  className="w-1/2 p-2 rounded bg-slate-700 text-white"
-                  placeholder="Lat"
-                  value={newLat}
-                  onChange={(e) => setNewLat(e.target.value)}
+                  className="w-full p-2 rounded bg-slate-700 text-white"
+                  placeholder="Add new location name"
+                  value={newLocationName}
+                  onChange={(e) => setNewLocationName(e.target.value)}
                 />
-                <input
-                  className="w-1/2 p-2 rounded bg-slate-700 text-white"
-                  placeholder="Lon"
-                  value={newLon}
-                  onChange={(e) => setNewLon(e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <input
+                    className="w-1/2 p-2 rounded bg-slate-700 text-white"
+                    placeholder="Lat"
+                    value={newLat}
+                    onChange={(e) => setNewLat(e.target.value)}
+                  />
+                  <input
+                    className="w-1/2 p-2 rounded bg-slate-700 text-white"
+                    placeholder="Lon"
+                    value={newLon}
+                    onChange={(e) => setNewLon(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={addNewLocation}
+                  className="bg-blue-500 px-3 py-1 rounded text-white w-full"
+                >
+                  Add New Location
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={addNewLocation}
-                className="bg-blue-500 px-3 py-1 rounded text-white w-full"
-              >
-                Add New Location
-              </button>
-            </div>
+            )}
           </div>
 
           <div>
             <label className="block mb-1">Board</label>
-            <select
+            <input
               className="w-full p-2 rounded bg-slate-700 text-white"
               value={form.board}
               onChange={(e) => setForm({ ...form, board: e.target.value })}
-            >
-              {boards.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
-            <div className="mt-2 flex gap-2">
-              <input
-                className="flex-1 p-2 rounded bg-slate-700 text-white"
-                placeholder="Add new board"
-                value={newBoard}
-                onChange={(e) => setNewBoard(e.target.value)}
-              />
-              <button
-                type="button"
-                onClick={addNewBoard}
-                className="bg-blue-500 px-3 py-1 rounded text-white"
-              >
-                Add
-              </button>
-            </div>
+            />
           </div>
 
           <div>
             <label className="block mb-1">Wave Height (e.g. 3–4 ft)</label>
             <input
               className="w-full p-2 rounded bg-slate-700 text-white"
-              value={form.wave_height}
-              onChange={(e) =>
-                setForm({ ...form, wave_height: e.target.value })
-              }
+              value={form.height}
+              onChange={(e) => setForm({ ...form, height: e.target.value })}
             />
           </div>
 
@@ -276,11 +388,11 @@ export default function Surf() {
             <input
               type="number"
               className="w-full p-2 rounded bg-slate-700 text-white"
-              value={form.duration_minutes}
+              value={form.duration}
               onChange={(e) =>
                 setForm({
                   ...form,
-                  duration_minutes: parseInt(e.target.value || "0"),
+                  duration: parseInt(e.target.value || "0"),
                 })
               }
             />
@@ -291,11 +403,11 @@ export default function Surf() {
             <input
               type="number"
               className="w-full p-2 rounded bg-slate-700 text-white"
-              value={form.waves_caught}
+              value={form.waves}
               onChange={(e) =>
                 setForm({
                   ...form,
-                  waves_caught: parseInt(e.target.value || "0"),
+                  waves: parseInt(e.target.value || "0"),
                 })
               }
             />
@@ -310,23 +422,6 @@ export default function Surf() {
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
           </div>
-
-          {editMode ? (
-            <button
-              type="button"
-              onClick={handleUpdate}
-              className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded text-white"
-            >
-              Update Log
-            </button>
-          ) : (
-            <button
-              type="submit"
-              className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white"
-            >
-              Submit
-            </button>
-          )}
         </form>
 
         <div className="bg-slate-800 rounded-xl p-4 max-h-[400px] overflow-y-auto shadow-md">
@@ -337,20 +432,23 @@ export default function Surf() {
             <ul className="space-y-4">
               {logs
                 .slice()
-                .sort((a, b) => b.date.localeCompare(a.date)) // Reverse chronological
+                .sort((a, b) => b.datetime.localeCompare(a.datetime)) // Reverse chronological
                 .map((log) => (
                   <li key={log.id} className="border-b border-slate-600 pb-2">
                     <div className="font-semibold text-white">
-                      {log.date}: {log.location}
+                      {format(new Date(log.datetime), "yyyy-MM-dd")}:{" "}
+                      {locations.find((l) => l.id === log.location_id)?.name ||
+                        "Unknown location"}
                     </div>
                     <div className="text-sm text-gray-300">
-                      {log.duration_minutes} minutes · {log.waves_caught} waves
+                      {log.data.duration} minutes · {log.data.waves} waves
                       caught
-                      {log.wave_height && ` · ${log.wave_height}`} · {log.board}
+                      {log.data.height && ` · ${log.data.height}`} ·{" "}
+                      {log.data.board}
                     </div>
-                    {log.notes && (
+                    {log.data.notes && (
                       <div className="text-sm text-gray-400 mt-1 italic">
-                        {log.notes}
+                        {log.data.notes}
                       </div>
                     )}
                   </li>
@@ -382,14 +480,14 @@ export default function Surf() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution="&copy; OpenStreetMap contributors"
             />
-            {groupedLogs.map(({ name, coordinates, logs }) => (
+            {groupedLogsByLocation.map(({ name, coordinates, logs }) => (
               <Marker key={name} position={coordinates}>
                 <Tooltip direction="top">
                   <div className="text-sm">
                     <div className="font-semibold">{name}</div>
                     {logs.map((log) => (
                       <div key={log.id}>
-                        {log.date} · {log.waves_caught} waves
+                        {log.date} · {log.waves} waves
                       </div>
                     ))}
                   </div>
@@ -398,9 +496,9 @@ export default function Surf() {
             ))}
 
             <FitBounds
-              points={logs
-                .filter((l) => l.coordinates)
-                .map((l) => l.coordinates!)}
+              points={locations
+                .filter((l) => [l.lat, l.lon])
+                .map((l) => [l.lat, l.lon]!)}
             />
           </MapContainer>
         </div>
