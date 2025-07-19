@@ -1,4 +1,3 @@
-// src/pages/Surf.tsx
 import { useEffect, useState } from "react";
 import type { LatLngExpression, LatLngBoundsExpression } from "leaflet";
 import {
@@ -8,54 +7,31 @@ import {
   Tooltip,
   useMap,
 } from "react-leaflet";
+import { supabase } from "../../../api/supabaseClient";
+const SURFING_ACTIVITY_ID = "0ddcfe52-2da0-47b6-a44a-e282f54ac21d";
 
-const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-type SurfLog = {
-  id: number;
-  date: string;
-  location: string;
-  board: string;
-  wave_height: string;
-  duration_minutes: number;
-  waves_caught: number;
-  notes?: string;
-  coordinates?: [number, number];
-};
-
-type LocationEntry = {
-  name: string;
-  coordinates: [number, number];
-};
-
-type LocationApiResponse = {
-  name: string;
-  lat: number;
-  lon: number;
-};
-
-type BoardApiResponse = {
-  name: string;
-};
-
-
-function FitBounds({ points }: { points: LatLngExpression[] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (points.length > 1) {
-      map.fitBounds(points as LatLngBoundsExpression, { padding: [20, 20] });
-    }
-  }, [points, map]);
-  return null;
-}
+import type { SurfLogData, LocationRow, LogRow } from "./types";
 
 export default function Surf() {
-  const [logs, setLogs] = useState<SurfLog[]>([]);
-  const [locations, setLocations] = useState<LocationEntry[]>([]);
-  const [boards, setBoards] = useState<string[]>([]);
+  const [date, setDate] = useState(() => {
+    const now = new Date();
+    now.setSeconds(0, 0); // Remove seconds and ms
+
+    const pad = (n: number) => n.toString().padStart(2, "0");
+
+    const year = now.getFullYear();
+    const month = pad(now.getMonth() + 1); // Months are 0-indexed
+    const day = pad(now.getDate());
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  });
+
+  const [logs, setLogs] = useState<LogRow[]>([]);
+  const [locations, setLocations] = useState<LocationRow[]>([]);
 
   const [form, setForm] = useState({
-    date: new Date().toISOString().split("T")[0],
     location: "",
     board: "",
     wave_height: "",
@@ -64,214 +40,132 @@ export default function Surf() {
     notes: "",
   });
 
-  const [newLocation, setNewLocation] = useState("");
-  const [newLat, setNewLat] = useState("");
-  const [newLon, setNewLon] = useState("");
+  const [boards, setBoards] = useState<string[]>([]);
   const [newBoard, setNewBoard] = useState("");
-  const [editMode, setEditMode] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
 
-  const groupedLogs = locations.map((loc) => {
-    const matchingLogs = logs.filter((log) => log.location === loc.name);
-    return {
-      name: loc.name,
-      coordinates: loc.coordinates,
-      logs: matchingLogs,
-    };
-  });
+  function addNewBoard() {
+    if (newBoard && !boards.includes(newBoard)) {
+      setBoards([...boards, newBoard]);
+      setNewBoard("");
+    }
+  }
 
+  // Fetches locations
   useEffect(() => {
-    const fetchAll = async () => {
-      try {
-        const [logRes, locRes, boardRes] = await Promise.all([
-          fetch(`${api}/logs/surf`),
-          fetch(`${api}/surf/locations`),
-          fetch(`${api}/surf/boards`),
-        ]);
-
-        const [logsData, locationsData, boardsData] = await Promise.all([
-          logRes.json(),
-          locRes.json(),
-          boardRes.json(),
-        ]);
-
-        setLogs(Array.isArray(logsData) ? logsData : []);
-
-        const parsedLocations: LocationEntry[] = (locationsData as LocationApiResponse[]).map((l) => ({
-          name: l.name,
-          coordinates: [l.lat, l.lon] as [number, number],
-        }));
-
-        setLocations(parsedLocations);
-
-        const boardNames = (boardsData as BoardApiResponse[]).map((b) => b.name);
-        setBoards(boardNames);
-
-        // initialize form if empty
-        if (parsedLocations.length > 0) {
-          setForm((prev) => ({
-            ...prev,
-            location: parsedLocations[0].name,
-            coordinates: parsedLocations[0].coordinates,
-          }));
-        }
-
-        if (boardNames.length > 0) {
-          setForm((prev) => ({ ...prev, board: boardNames[0] }));
-        }
-      } catch (err) {
-        console.error("❌ Failed to fetch surf data:", err);
+    async function fetchAllLocations() {
+      const { data, error } = await supabase
+        .from("locations")
+        .select("*")
+        .eq("activity_id", SURFING_ACTIVITY_ID);
+      if (error) {
+        console.error("Error fetching locations:", error);
+        setLocations([]);
+      } else if (data) {
+        setLocations(data);
       }
-    };
-
-    fetchAll();
+    }
+    fetchAllLocations();
   }, []);
+
+  // Fetches logs
+  useEffect(() => {
+    async function fetchAllLogs() {
+      const { data, error } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("activity_id", SURFING_ACTIVITY_ID)
+        .order("datetime", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching logs:", error);
+        setLogs([]);
+      } else if (data) {
+        setLogs(data);
+      }
+    }
+    fetchAllLogs();
+  }, []);
+
+  // Fetch single log for selected date and populate form
+    useEffect(() => {
+      async function fetchLogForDate() {
+        const selectedDate = new Date(date);
+  
+        const start = new Date(selectedDate);
+        start.setHours(0, 0, 0, 0);
+        const startISO = start.toISOString(); // e.g. "2025-07-18T07:00:00.000Z"
+  
+        const end = new Date(selectedDate);
+        end.setHours(23, 59, 59, 999);
+        const endISO = end.toISOString();
+  
+        const { data, error } = await supabase
+          .from("logs")
+          .select("*")
+          .eq("activity_id", SURFING_ACTIVITY_ID)
+          .gte("datetime", startISO)
+          .lte("datetime", endISO)
+          .limit(1)
+          .single();
+  
+        if (error) throw error;
+      }
+  
+      fetchLogForDate();
+    }, [date]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch(`${api}/logs/surf`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
-      const newLog = await res.json();
-      setLogs((prev) => [...prev, newLog]);
-      setForm({
-        date: new Date().toISOString().split("T")[0],
-        location: locations[0].name,
-        board: boards[0],
-        wave_height: "",
-        duration_minutes: 0,
-        waves_caught: 0,
-        notes: "",
-      });
-    }
-  };
 
-  const addNewLocation = async () => {
-    if (
-      newLocation &&
-      newLat &&
-      newLon &&
-      !locations.some((l) => l.name === newLocation)
-    ) {
-      const lat = parseFloat(newLat);
-      const lon = parseFloat(newLon);
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-      try {
-        const res = await fetch(`${api}/surf/locations`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: newLocation, lat, lon }),
-        });
+    if (authError) throw authError;
+    if (!user) throw new Error("User not authenticated");
 
-        if (!res.ok) throw new Error("Failed to add location");
+    try {
+      const payload = {
+        user_id: user.id,
+        activity_id: SURFING_ACTIVITY_ID,
+        datetime: new Date(date).toISOString(),
+        location_id: form.location,
+        data: {
+          board: form.board,
+          wave_height: form.wave_height,
+          duration_minutes: form.duration_minutes,
+          waves_caught: form.waves_caught,
+          notes: form.notes,
+        },
+      };
 
-        const newLoc = await res.json();
-        const entry = {
-          name: newLoc.name,
-          coordinates: [newLoc.lat, newLoc.lon] as [number, number],
-        };
-        setLocations((prev) => [...prev, entry]);
-        setForm((prev) => ({
-          ...prev,
-          location: entry.name,
-          coordinates: entry.coordinates,
-        }));
-        setNewLocation("");
-        setNewLat("");
-        setNewLon("");
-      } catch (err) {
-        console.error("❌ Error adding location:", err);
+      // Upsert on conflict (activity_id, datetime)
+      const { error } = await supabase
+        .from("logs")
+        .upsert(payload, { onConflict: "activity_id,datetime" });
+
+      if (error) throw error;
+
+      alert("Lifting session logged!");
+
+      // Refresh logs for charts
+      const { data: updatedLogs, error: fetchError } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("activity_id", SURFING_ACTIVITY_ID)
+        .order("datetime", { ascending: true });
+
+      if (fetchError) {
+        console.error("Error refreshing logs:", fetchError);
+      } else if (updatedLogs) {
+        setLogs(updatedLogs);
       }
+    } catch (error) {
+      console.error("❌ Submission error:", error);
+      alert("Failed to save log. Please check your inputs.");
     }
   };
-
-  const addNewBoard = async () => {
-    if (newBoard && !boards.includes(newBoard)) {
-      try {
-        const res = await fetch(`${api}/surf/boards`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: newBoard }),
-        });
-
-        if (!res.ok) throw new Error("Failed to add board");
-
-        const newB = await res.json();
-        setBoards((prev) => [...prev, newB.name]);
-        setForm((prev) => ({ ...prev, board: newB.name }));
-        setNewBoard("");
-      } catch (err) {
-        console.error("❌ Error adding board:", err);
-      }
-    }
-  };
-
-  useEffect(() => {
-    const existing = logs.find((log) => log.date === form.date);
-    if (existing) {
-      setForm({
-        date: existing.date,
-        location: existing.location,
-        board: existing.board,
-        wave_height: existing.wave_height,
-        duration_minutes: existing.duration_minutes,
-        waves_caught: existing.waves_caught,
-        notes: existing.notes || "",
-      });
-      setEditMode(true);
-      setEditingId(existing.id);
-    } else {
-      setForm((prev) => ({
-        ...prev,
-        location: locations[0]?.name || "",
-        board: boards[0] || "",
-        wave_height: "",
-        duration_minutes: 0,
-        waves_caught: 0,
-        notes: "",
-        coordinates: locations[0]?.coordinates || [0, 0],
-      }));
-      setEditMode(false);
-      setEditingId(null);
-    }
-  }, [form.date, logs, locations, boards]);
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingId) return;
-
-    const res = await fetch(`http://localhost:8000/logs/surf/${editingId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-
-    if (res.ok) {
-      const updated = await res.json();
-      setLogs((prev) =>
-        prev.map((log) => (log.id === updated.id ? updated : log))
-      );
-      setEditMode(false);
-      setEditingId(null);
-    }
-  };
-
-  useEffect(() => {
-    const selected = locations.find((l) => l.name === form.location);
-    if (selected) {
-      setForm((prev) => ({
-        ...prev,
-        coordinates: selected.coordinates,
-      }));
-    }
-  }, [form.location, locations]);
-
-  const totalSessions = logs.length;
-  const totalWaves = logs.reduce((sum, l) => sum + l.waves_caught, 0);
-  const totalDuration = logs.reduce((sum, l) => sum + l.duration_minutes, 0);
 
   return (
     <div className="flex flex-col md:flex-row gap-8 p-6">
@@ -513,4 +407,14 @@ export default function Surf() {
       </div>
     </div>
   );
+}
+
+function FitBounds({ points }: { points: LatLngExpression[] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (points.length > 1) {
+      map.fitBounds(points as LatLngBoundsExpression, { padding: [20, 20] });
+    }
+  }, [points, map]);
+  return null;
 }
