@@ -270,6 +270,7 @@ export default function Lifts() {
           return {
             date: log.datetime,
             weight: maxWeight,
+            lift: lift
           };
         }
       })
@@ -509,6 +510,7 @@ export default function Lifts() {
             data={formatTypedData("squat")}
             dataKey="weight"
             color="#4ade80"
+            lift="squat"
           />
         </div>
 
@@ -518,6 +520,7 @@ export default function Lifts() {
             data={formatTypedData("bench")}
             dataKey="weight"
             color="#60a5fa"
+            lift="bench"
           />
         </div>
 
@@ -527,6 +530,7 @@ export default function Lifts() {
             data={formatTypedData("deadlift")}
             dataKey="weight"
             color="#f87171"
+            lift="deadlift"
           />
         </div>
 
@@ -536,6 +540,7 @@ export default function Lifts() {
             data={formatTypedData("pullups")}
             dataKey="weight"
             color="#4ade80"
+            lift="pullups"
           />
         </div>
 
@@ -545,6 +550,7 @@ export default function Lifts() {
             data={formatTypedData("overhead")}
             dataKey="weight"
             color="#60a5fa"
+            lift="overhead"
           />
         </div>
 
@@ -554,6 +560,7 @@ export default function Lifts() {
             data={formatTypedData("clean")}
             dataKey="weight"
             color="#f87171"
+            lift="clean"
           />
         </div>
       </div>
@@ -566,11 +573,13 @@ function ChartSection({
   data,
   dataKey,
   color,
+  lift,
 }: {
   title: string;
-  data: { date: string; weight: number }[];
+  data: { date: string; weight: number}[];
   dataKey: string;
   color: string;
+  lift: string;
 }) {
   if (!data.length) {
     return (
@@ -580,6 +589,7 @@ function ChartSection({
       </div>
     );
   }
+  console.log(data)
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-2">{title}</h2>
@@ -590,7 +600,7 @@ function ChartSection({
             tickFormatter={(str) => new Date(str).toLocaleDateString()}
           />
           <YAxis />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip lift={lift}/>} />
 
           <Line
             type="monotone"
@@ -610,8 +620,10 @@ const CustomTooltip = ({
   active,
   payload,
   label,
-}: TooltipProps<number, string>) => {
+  lift,
+}: TooltipProps<number, string> & { lift: string }) => {
   if (active && payload && payload.length) {
+    const isPullups = lift === "pullups";
     return (
       <div className="bg-slate-700 text-white p-2 rounded shadow-md text-sm">
         <div className="font-semibold">
@@ -622,10 +634,13 @@ const CustomTooltip = ({
             day: "numeric",
           })}
         </div>
-        <div>{payload[0].value} lbs</div>
+        <div>
+          {payload[0].value} {isPullups ? "reps" : "lbs"}
+        </div>
       </div>
     );
   }
 
   return null;
 };
+
