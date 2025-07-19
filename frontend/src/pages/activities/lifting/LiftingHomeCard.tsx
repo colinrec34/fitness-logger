@@ -75,7 +75,7 @@ export default function LiftProgress() {
     b.datetime.localeCompare(a.datetime)
   );
   const latest = sortedLogs[0];
-  const formattedDatetime = latest.datetime ? format( new Date(latest.datetime), "MMM d, yyyy")
+  const formattedDatetime = latest.datetime ? format( new Date(latest.datetime), "MMMM d, yyyy")
   : "";
   const relativeDate = latest?.datetime
     ? formatDistanceToNow(new Date(latest.datetime), { addSuffix: true })
