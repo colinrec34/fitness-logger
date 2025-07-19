@@ -22,7 +22,7 @@ import Snorkel from "./pages/activities/snorkeling/snorkeling";
 const activityComponents: Record<string, React.FC> = {
   weight: Weight,
   lifting: Lifts,
-  hikes: Hikes,
+  hiking: Hikes,
   surfing: Surf,
   running: Run,
   snorkeling: Snorkel,
