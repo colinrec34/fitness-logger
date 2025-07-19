@@ -32,6 +32,7 @@ export default function LiftProgress() {
     clean: 185,
   });
 
+  // Fetching all logs
   useEffect(() => {
     async function fetchAllLogs() {
       setLoading(true);
