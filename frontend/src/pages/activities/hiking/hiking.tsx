@@ -9,22 +9,15 @@ import {
 } from "react-leaflet";
 import type { LatLngExpression, LatLngBoundsExpression } from "leaflet";
 import type { Map as LeafletMap } from "leaflet";
+import polyline from "@mapbox/polyline";
 
-const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+import { supabase } from "../../../api/supabaseClient";
+const HIKING_ACTIVITY_ID = "a2fb0a80-f149-4761-a339-aeb282ba06a9";
 
-type HikeApiResponse = {
-  id: number;
-  date: string;
-  name: string;
-  distance_miles: number;
-  elevation_gain_ft: number;
-  duration_minutes?: number;
-  route_json: string;
-  notes?: string;
-};
+import type { LogRow } from "./types";
 
-function formatDuration(durationMinutes: number): string {
-  const totalSeconds = Math.round(durationMinutes * 60);
+function formatDuration(durationSeconds: number): string {
+  const totalSeconds = Math.round(durationSeconds);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
@@ -33,10 +26,10 @@ function formatDuration(durationMinutes: number): string {
     .padStart(2, "0")}s`;
 }
 
-function formatPace(durationMinutes?: number, mileage?: number): string {
-  if (durationMinutes == null || mileage == null || mileage === 0)
+function formatPace(durationSeconds?: number, distance?: number): string {
+  if (durationSeconds == null || distance == null || distance === 0)
     return "Pace N/A";
-  const totalSecondsPerMile = (durationMinutes / mileage) * 60;
+  const totalSecondsPerMile = (durationSeconds / distance);
   const minutes = Math.floor(totalSecondsPerMile / 60);
   const seconds = Math.round(totalSecondsPerMile % 60);
   return `${minutes}:${seconds.toString().padStart(2, "0")} / mi`;
@@ -53,161 +46,167 @@ function FitBounds({ route }: { route: LatLngExpression[] }) {
 }
 
 function SetBigMapRef({ setRef }: { setRef: (map: LeafletMap) => void }) {
-    const map = useMap();
-    useEffect(() => {
-      setRef(map);
-    }, [map, setRef]);
-    return null;
-  }
-
-type HikeLog = {
-  id: number;
-  date: string;
-  name: string;
-  mileage: number;
-  elevation_gain_ft: number;
-  duration_minutes?: number;
-  route: [number, number][];
-  notes?: string;
-};
+  const map = useMap();
+  useEffect(() => {
+    setRef(map);
+  }, [map, setRef]);
+  return null;
+}
 
 export default function Hike() {
-  const [hikes, setHikes] = useState<HikeLog[]>([]);
+  const [logs, setLogs] = useState<LogRow[]>([]);
+
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"logs" | "stats">("logs");
 
   const bigMapRef = useRef<LeafletMap | null>(null);
 
+  // Fetches logs
   useEffect(() => {
-    const fetchAndImport = async () => {
+    async function fetchAllLogs() {
       setLoading(true);
-      try {
-        await fetch(`${api}/import/hikes`, { method: "POST" });
-        const res = await fetch(`${api}/logs/hikes`);
-        const data = await res.json();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
 
-        setHikes(
-          data.map((hike: HikeApiResponse) => ({
-            ...hike,
-            mileage: hike.distance_miles,
-            route: hike.route_json ? JSON.parse(hike.route_json) : [],
-          }))
-        );
-      } catch (err) {
-        console.error("Failed to import or fetch hikes:", err);
-      } finally {
-        setLoading(false);
+      if (!accessToken) {
+        console.warn("No session or access token found.");
+        return;
       }
-    };
 
-    fetchAndImport();
+      // Strava edge function to update logs
+      const syncRes = await fetch(
+        "https://rcdkucjsapmykzkiodzu.supabase.co/functions/v1/strava-sync",
+        {
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!syncRes.ok) {
+        console.error("Strava sync failed:", await syncRes.text());
+      } else {
+        const syncResult = await syncRes.json();
+        console.log("Strava sync success:", syncResult);
+      }
+
+      const { data, error } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("activity_id", HIKING_ACTIVITY_ID)
+        .order("datetime", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching logs:", error);
+        setLogs([]);
+      } else if (data) {
+        setLogs(data);
+      }
+      setLoading(false);
+    }
+    fetchAllLogs();
   }, []);
 
-  useEffect(() => {
-    if (activeTab === "stats" && bigMapRef.current) {
-      setTimeout(() => {
-        bigMapRef.current?.invalidateSize();
-      }, 100); // slight delay ensures DOM is ready
-    }
-  }, [activeTab]);
+  // Data formatting functions
+  function metersToMiles (meters: number) {
+    return meters / 1609.34;
+  }
 
-  const totalHikes = hikes.length;
-  const totalMiles = hikes.reduce((sum, h) => sum + h.mileage, 0);
-  const totalElevation = hikes.reduce((sum, h) => sum + h.elevation_gain_ft, 0);
-
-  const oneYearAgo = new Date();
-  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-  const lastYearHikes = hikes.filter((h) => new Date(h.date) > oneYearAgo);
-  const lastYearMiles = lastYearHikes.reduce((sum, h) => sum + h.mileage, 0);
-  const lastYearElevation = lastYearHikes.reduce(
-    (sum, h) => sum + h.elevation_gain_ft,
+  // STATISTICS
+  const totalHikes = logs.length;
+  const totalMiles = metersToMiles(logs.reduce((sum, log) => sum + log.data.distance, 0));
+  const totalElevation = logs.reduce(
+    (sum, log) => sum + log.data.total_elevation_gain!,
     0
   );
 
-  const allStartCoords = hikes
-    .map((h) => h.route?.[0])
-    .filter((pt): pt is [number, number] => Array.isArray(pt));
+  const now = new Date();
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(now.getFullYear() - 1);
+
+  const lastYearHikes = logs.filter((log) => {
+    return new Date(log.datetime) >= oneYearAgo;
+  });
+
+  const lastYearMiles = metersToMiles(lastYearHikes.reduce(
+    (sum, log) => sum + (log.data.distance || 0),
+    0
+  ));
+
+  const lastYearElevation = lastYearHikes.reduce(
+    (sum, log) => sum + (log.data.total_elevation_gain || 0),
+    0
+  );
+
+  const allStartCoords: LatLngExpression[] = logs
+    .map((log) => {
+      const encoded = log.data.map?.summary_polyline;
+      if (!encoded) return null;
+
+      const coords = polyline.decode(encoded);
+      return coords[0];
+    })
+    .filter((coord): coord is LatLngExpression => Array.isArray(coord));
 
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Hikes</h1>
-
-      {/* Toggle buttons (mobile only) */}
-      <div className="lg:hidden flex justify-center gap-4 mb-4">
-        <button
-          className={`px-4 py-2 rounded ${
-            activeTab === "logs"
-              ? "bg-slate-700 text-white"
-              : "bg-slate-600 text-gray-300"
-          }`}
-          onClick={() => setActiveTab("logs")}
-        >
-          Logs
-        </button>
-        <button
-          className={`px-4 py-2 rounded ${
-            activeTab === "stats"
-              ? "bg-slate-700 text-white"
-              : "bg-slate-600 text-gray-300"
-          }`}
-          onClick={() => setActiveTab("stats")}
-        >
-          Stats & Map
-        </button>
-      </div>
-
-      {/* Two-column layout (stacked on mobile) */}
+      {/* Two-column layout*/}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Logs column */}
         <div
-          className={`${
-            activeTab !== "logs" ? "hidden" : ""
-          } lg:block overflow-y-auto max-h-[calc(100vh-150px)] pr-2 space-y-6 scroll-hide`}
+          className={`lg:block overflow-y-auto max-h-[calc(100vh-150px)] pr-2 space-y-6 scroll-hide`}
         >
           {loading ? (
             <p className="text-gray-400 italic">Loading hikes...</p>
-          ) : hikes.length === 0 ? (
+          ) : logs.length === 0 ? (
             <p className="text-gray-400 italic">No hikes found.</p>
           ) : (
-            hikes.map((hike) => (
+            logs.map((log) => (
               <div
-                key={hike.id}
+                key={log.id}
                 className="bg-slate-800 rounded-xl p-4 shadow-md flex flex-col"
               >
                 <h2 className="text-xl font-semibold">
-                  {hike.name} — {hike.date}
+                  {log.data.name} — {log.datetime}
                 </h2>
                 <p className="text-sm text-gray-300">
-                  {hike.mileage.toFixed(2)} mi ·{" "}
-                  {hike.elevation_gain_ft.toFixed(0)} ft ·{" "}
-                  {formatDuration(hike.duration_minutes || 0)} ·{" "}
-                  {formatPace(hike.duration_minutes, hike.mileage)}
+                  {metersToMiles(log.data.distance).toFixed(2)} mi ·{" "}
+                  {log.data.total_elevation_gain?.toFixed(0)} ft ·{" "}
+                  {formatDuration(log.data.elapsed_time || 0)} ·{" "}
+                  {formatPace(log.data.elapsed_time, metersToMiles(log.data.distance))}
                 </p>
-                {hike.notes && (
-                  <p className="mt-2 italic text-gray-400">{hike.notes}</p>
-                )}
-                {hike.route?.length > 1 ? (
+                {/* {log.data.notes && (
+                  <p className="mt-2 italic text-gray-400">{log.data.notes}</p>
+                )} */}
+                {log.data.map.summary_polyline?.length > 1 ? (
                   <div className="w-full aspect-[4/3] relative mt-4 rounded overflow-hidden">
                     <MapContainer
-                      center={hike.route[0] as LatLngExpression}
+                      center={polyline.decode(log.data.map.summary_polyline)[0]}
                       zoom={15}
                       scrollWheelZoom={false}
                       style={{ height: "100%", width: "100%" }}
                     >
                       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                       <Polyline
-                        positions={hike.route}
+                        positions={polyline.decode(
+                          log.data.map.summary_polyline
+                        )}
                         color="#1e293b"
                         weight={8}
                       />
                       <Polyline
-                        positions={hike.route}
+                        positions={polyline.decode(
+                          log.data.map.summary_polyline
+                        )}
                         color="#32CD32"
                         weight={4}
                       >
-                        <Tooltip sticky>{hike.name}</Tooltip>
+                        <Tooltip sticky>{log.data.name}</Tooltip>
                       </Polyline>
-                      <FitBounds route={hike.route} />
+                      <FitBounds
+                        route={polyline.decode(log.data.map.summary_polyline)}
+                      />
                     </MapContainer>
                   </div>
                 ) : (
@@ -222,9 +221,7 @@ export default function Hike() {
 
         {/* Stats + map column */}
         <div
-          className={`${
-            activeTab !== "stats" ? "hidden" : ""
-          } lg:block space-y-6 text-gray-200`}
+          className={`lg:block space-y-6 text-gray-200`}
         >
           {totalHikes > 0 && (
             <div className="bg-slate-800 rounded-xl p-4 shadow-md">
@@ -278,23 +275,30 @@ export default function Hike() {
                 >
                   <SetBigMapRef setRef={(map) => (bigMapRef.current = map)} />
                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  {hikes.map(
-                    (hike, i) =>
-                      hike.route?.[0] && (
-                        <Marker key={i} position={hike.route[0]}>
+                  {logs.map(
+                    (log, i) =>
+                      polyline.decode(log.data.map.summary_polyline)[0] && (
+                        <Marker
+                          key={i}
+                          position={
+                            polyline.decode(log.data.map.summary_polyline)[0]
+                          }
+                        >
                           <Tooltip>
                             <div className="text-sm">
-                              <p className="font-semibold">{hike.name}</p>
-                              <p>{hike.date}</p>
-                              <p>{hike.mileage.toFixed(2)} mi</p>
-                              <p>{hike.elevation_gain_ft.toFixed(0)} ft</p>
+                              <p className="font-semibold">{log.data.name}</p>
+                              <p>{log.datetime}</p>
+                              <p>{metersToMiles(log.data.distance)?.toFixed(2)} mi</p>
                               <p>
-                                {formatDuration(hike.duration_minutes || 0)}
+                                {log.data.total_elevation_gain?.toFixed(0)} ft
+                              </p>
+                              <p>
+                                {formatDuration(log.data.elapsed_time || 0)}
                               </p>
                               <p>
                                 {formatPace(
-                                  hike.duration_minutes,
-                                  hike.mileage
+                                  log.data.elapsed_time,
+                                  metersToMiles(log.data.distance)
                                 )}
                               </p>
                             </div>
