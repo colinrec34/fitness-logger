@@ -21,7 +21,7 @@ import type {
 } from "./types";
 
 export default function Lifts() {
-  const [date, setDate] = useState(() => {
+  const [datetime, setDatetime] = useState(() => {
     const now = new Date();
     now.setSeconds(0, 0); // Remove seconds and ms
 
@@ -49,6 +49,7 @@ export default function Lifts() {
     work: [{ reps: 5, weight: 0, sets: 3 }],
   });
 
+  // Setting the sections of the logging pane
   const [squat, setSquat] = useState<LiftSection>(emptyLiftSection());
   const [bench, setBench] = useState<LiftSection>(emptyLiftSection());
   const [deadlift, setDeadlift] = useState<LiftSection>({
@@ -58,11 +59,9 @@ export default function Lifts() {
     ],
     work: [{ reps: 5, weight: 0, sets: 1 }],
   });
-
   const [pullups, setPullups] = useState<{ reps: number; sets?: number }[]>([
     { reps: 0, sets: 1 },
   ]);
-
   const [overhead, setOverhead] = useState<LiftSection>(emptyLiftSection());
   const [clean, setClean] = useState<LiftSection>(emptyLiftSection());
   const [notes, setNotes] = useState("");
@@ -89,7 +88,7 @@ export default function Lifts() {
   // Fetch single log for selected date and populate form
   useEffect(() => {
     async function fetchLogForDate() {
-      const selectedDate = new Date(date);
+      const selectedDate = new Date(datetime);
 
       const start = new Date(selectedDate);
       start.setHours(0, 0, 0, 0);
@@ -151,7 +150,7 @@ export default function Lifts() {
     }
 
     fetchLogForDate();
-  }, [date]);
+  }, [datetime]);
 
   // Normalize sets: ensure sets is at least 1 everywhere
   function normalizeSets(lift: LiftSection): LiftSection {
@@ -201,7 +200,7 @@ export default function Lifts() {
       const payload = {
         user_id: user.id,
         activity_id: LIFTING_ACTIVITY_ID,
-        datetime: new Date(date).toISOString(),
+        datetime: new Date(datetime).toISOString(),
         data: {
           squat: normalizeSets(squat),
           bench: normalizeSets(bench),
@@ -397,8 +396,8 @@ export default function Lifts() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <input
             type="datetime-local"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
+            value={datetime}
+            onChange={(e) => setDatetime(e.target.value)}
             className="p-2 border"
             required
           />
