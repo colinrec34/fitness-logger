@@ -2,7 +2,7 @@ import WeightProgress from "./activities/weight/WeightHomeCard";
 import LiftProgress from "./activities/lifting/LiftingHomeCard";
 import HikeProgress from "./activities/hiking/HikeHomeCard";
 import RunProgress from "./activities/running/RunningHomeCard";
-import SurfProgress from "./activities/surfing/SurfHomeCard";
+import SurfProgress from "./activities/surfing/SurfingHomeCard";
 import SnorkelingProgress from "./activities/snorkeling/SnorkelingHomeCard";
 
 import CardGrid from "../components/CardGrid";
