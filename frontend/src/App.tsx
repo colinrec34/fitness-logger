@@ -23,9 +23,9 @@ const activityComponents: Record<string, React.FC> = {
   weight: Weight,
   lifting: Lifts,
   hikes: Hikes,
-  surf: Surf,
-  run: Run,
-  snorkel: Snorkel,
+  surfing: Surf,
+  running: Run,
+  snorkeling: Snorkel,
 };
 
 export default function App() {
@@ -76,10 +76,8 @@ export default function App() {
               {slugs.map((slug) => {
                 const Component = activityComponents[slug];
                 if (!Component) {
-                  // Skip slugs that don't have components yet
                   return null;
                 }
-
                 return (
                   <Route
                     key={slug}
