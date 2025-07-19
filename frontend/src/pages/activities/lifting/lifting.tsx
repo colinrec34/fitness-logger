@@ -270,7 +270,7 @@ export default function Lifts() {
           return {
             date: log.datetime,
             weight: maxWeight,
-            lift: lift
+            lift: lift,
           };
         }
       })
@@ -299,88 +299,92 @@ export default function Lifts() {
     }
 
     return (
-      <div>
-        <h3 className="font-semibold mb-1">Warm-up Sets</h3>
-        <div className="flex gap-2 mb-1 font-semibold text-sm">
-          <div className="w-full">Reps</div>
-          <div className="w-full">Weight</div>
-          <div className="w-full">Sets</div>
-        </div>
-        {section.warmup.map((set, i) => (
-          <div key={"warmup" + i} className="flex gap-2 mb-2 items-center">
-            <input
-              type="number"
-              min={0}
-              value={set.reps}
-              onChange={(e) =>
-                updateSet("warmup", i, "reps", Number(e.target.value))
-              }
-              className="w-full p-1 border rounded"
-            />
-            <input
-              type="number"
-              min={0}
-              value={set.weight}
-              onChange={(e) => {
-                const val = e.target.value === "" ? "" : Number(e.target.value);
-                updateSet("warmup", i, "weight", val);
-              }}
-              className="w-24 p-1 border rounded"
-              placeholder={allowEmptyWeights ? "Optional" : ""}
-            />
-            <input
-              type="number"
-              min={1}
-              value={set.sets ?? 1}
-              onChange={(e) =>
-                updateSet("warmup", i, "sets", Number(e.target.value))
-              }
-              className="w-full p-1 border rounded"
-              title="Number of repeated sets"
-            />
+      <div className="flex flex-col justify-between h-full">
+        <div>
+          <h3 className="font-semibold mb-1">Warm-up Sets</h3>
+          <div className="flex gap-2 mb-1 font-semibold text-sm">
+            <div className="w-full">Reps</div>
+            <div className="w-full">Weight</div>
+            <div className="w-full">Sets</div>
           </div>
-        ))}
+          {section.warmup.map((set, i) => (
+            <div key={"warmup" + i} className="flex gap-2 mb-2 items-center">
+              <input
+                type="number"
+                min={0}
+                value={set.reps}
+                onChange={(e) =>
+                  updateSet("warmup", i, "reps", Number(e.target.value))
+                }
+                className="w-full p-1 border rounded"
+              />
+              <input
+                type="number"
+                min={0}
+                value={set.weight}
+                onChange={(e) => {
+                  const val =
+                    e.target.value === "" ? "" : Number(e.target.value);
+                  updateSet("warmup", i, "weight", val);
+                }}
+                className="w-full p-1 border rounded"
+                placeholder={allowEmptyWeights ? "Optional" : ""}
+              />
+              <input
+                type="number"
+                min={1}
+                value={set.sets ?? 1}
+                onChange={(e) =>
+                  updateSet("warmup", i, "sets", Number(e.target.value))
+                }
+                className="w-full p-1 border rounded"
+                title="Number of repeated sets"
+              />
+            </div>
+          ))}
 
-        <h3 className="font-semibold mb-1 mt-4">Working Sets</h3>
-        <div className="flex gap-2 mb-1 font-semibold text-sm">
-          <div className="w-full">Reps</div>
-          <div className="w-full">Weight</div>
-          <div className="w-full">Sets</div>
-        </div>
-        {section.work.map((set, i) => (
-          <div key={"work" + i} className="flex gap-2 mb-2 items-center">
-            <input
-              type="number"
-              min={0}
-              value={set.reps}
-              onChange={(e) =>
-                updateSet("work", i, "reps", Number(e.target.value))
-              }
-              className="w-full p-1 border rounded"
-            />
-            <input
-              type="number"
-              min={0}
-              value={set.weight}
-              onChange={(e) => {
-                const val = e.target.value === "" ? "" : Number(e.target.value);
-                updateSet("work", i, "weight", val);
-              }}
-              className="w-24 p-1 border rounded"
-              placeholder={allowEmptyWeights ? "Optional" : ""}
-            />
-            <input
-              type="number"
-              min={1}
-              value={set.sets ?? 1}
-              onChange={(e) =>
-                updateSet("work", i, "sets", Number(e.target.value))
-              }
-              className="w-full p-1 border rounded"
-              title="Number of repeated sets"
-            />
+          <h3 className="font-semibold mb-1 mt-4">Working Sets</h3>
+          <div className="flex gap-2 mb-1 font-semibold text-sm">
+            <div className="w-full">Reps</div>
+            <div className="w-full">Weight</div>
+            <div className="w-full">Sets</div>
           </div>
-        ))}
+          {section.work.map((set, i) => (
+            <div key={"work" + i} className="flex gap-2 mb-2 items-center">
+              <input
+                type="number"
+                min={0}
+                value={set.reps}
+                onChange={(e) =>
+                  updateSet("work", i, "reps", Number(e.target.value))
+                }
+                className="w-full p-1 border rounded"
+              />
+              <input
+                type="number"
+                min={0}
+                value={set.weight}
+                onChange={(e) => {
+                  const val =
+                    e.target.value === "" ? "" : Number(e.target.value);
+                  updateSet("work", i, "weight", val);
+                }}
+                className="w-full p-1 border rounded"
+                placeholder={allowEmptyWeights ? "Optional" : ""}
+              />
+              <input
+                type="number"
+                min={1}
+                value={set.sets ?? 1}
+                onChange={(e) =>
+                  updateSet("work", i, "sets", Number(e.target.value))
+                }
+                className="w-full p-1 border rounded"
+                title="Number of repeated sets"
+              />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -414,7 +418,7 @@ export default function Lifts() {
             </div>
 
             {/* Deadlift */}
-            <div className="p-4 border rounded shadow bg-slate-800 h-full flex flex-col justify-between">
+            <div className="p-4 border rounded shadow bg-slate-800">
               <h2 className="text-xl font-semibold mb-2">Deadlift</h2>
               {renderLiftSection(deadlift, setDeadlift)}
             </div>
@@ -442,7 +446,7 @@ export default function Lifts() {
                         Array.from({ length: count }, () => ({ reps, sets }))
                       );
                     }}
-                    className="p-1 border w-24"
+                    className="p-1 border w-full"
                   />
                 </div>
                 <div>
@@ -460,7 +464,7 @@ export default function Lifts() {
                         }))
                       );
                     }}
-                    className="p-1 border w-24"
+                    className="p-1 border w-full"
                   />
                 </div>
               </div>
@@ -576,7 +580,7 @@ function ChartSection({
   lift,
 }: {
   title: string;
-  data: { date: string; weight: number}[];
+  data: { date: string; weight: number }[];
   dataKey: string;
   color: string;
   lift: string;
@@ -589,7 +593,6 @@ function ChartSection({
       </div>
     );
   }
-  console.log(data)
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-2">{title}</h2>
@@ -600,7 +603,7 @@ function ChartSection({
             tickFormatter={(str) => new Date(str).toLocaleDateString()}
           />
           <YAxis />
-          <Tooltip content={<CustomTooltip lift={lift}/>} />
+          <Tooltip content={<CustomTooltip lift={lift} />} />
 
           <Line
             type="monotone"
@@ -635,7 +638,7 @@ const CustomTooltip = ({
           })}
         </div>
         <div>
-          {payload[0].value} {isPullups ? "reps" : "lbs"}
+          {payload[0].value} {isPullups ? "pullups" : "lbs"}
         </div>
       </div>
     );
@@ -643,4 +646,3 @@ const CustomTooltip = ({
 
   return null;
 };
-
