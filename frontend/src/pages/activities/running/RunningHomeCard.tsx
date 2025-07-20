@@ -1,127 +1,156 @@
-import { useEffect, useState } from "react"
-import { MapContainer, TileLayer, Polyline, Tooltip, useMap } from "react-leaflet"
-import type { LatLngExpression, LatLngBoundsExpression } from "leaflet"
-import { formatDistanceToNow } from "date-fns"
+import { useEffect, useState } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Polyline,
+  Tooltip,
+  useMap,
+} from "react-leaflet";
+import polyline from "@mapbox/polyline";
+import type { LatLngBoundsExpression } from "leaflet";
+import { format, formatDistanceToNow } from "date-fns";
 import Card from "../../../components/Card";
 
-const api = import.meta.env.VITE_API_URL || "http://localhost:8000"
+import { supabase } from "../../../api/supabaseClient";
+const ACTIVITY_ID = "d3555da1-b932-42e2-9cbb-0908aaf1c73a";
+import type { LogRow } from "./types";
 
-
-type RunApiResponse = {
-  id: number
-  date: string
-  name: string
-  distance_miles: number
-  elevation_gain_ft: number
-  duration_minutes?: number
-  notes?: string
-  weather?: string
-  route_json: string
+function metersToMiles(meters: number) {
+  return meters / 1609.34;
 }
 
-type RunLog = {
-  id: number
-  date: string
-  name: string
-  distance_miles: number
-  elevation_gain_ft: number
-  duration_minutes?: number
-  notes?: string
-  weather?: string
-  route: [number, number][]
+function formatDuration(durationSeconds: number): string {
+  const totalSeconds = Math.round(durationSeconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours}h ${minutes.toString().padStart(2, "0")}m ${seconds
+    .toString()
+    .padStart(2, "0")}s`;
 }
 
-function formatDuration(durationMinutes?: number): string {
-  if (durationMinutes == null) return "Time N/A"
-  const totalSeconds = Math.round(durationMinutes * 60)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}m ${seconds.toString().padStart(2, "0")}s`
+function formatPace(durationSeconds?: number, distance?: number): string {
+  if (durationSeconds == null || distance == null || distance === 0)
+    return "Pace N/A";
+  const totalSecondsPerMile = durationSeconds / distance;
+  const minutes = Math.floor(totalSecondsPerMile / 60);
+  const seconds = Math.round(totalSecondsPerMile % 60);
+  return `${minutes}:${seconds.toString().padStart(2, "0")} / mi`;
 }
 
-function formatPace(durationMinutes?: number, miles?: number): string {
-  if (!durationMinutes || !miles || miles === 0) return "Pace N/A"
-  const totalSecondsPerMile = (durationMinutes / miles) * 60
-  const minutes = Math.floor(totalSecondsPerMile / 60)
-  const seconds = Math.round(totalSecondsPerMile % 60)
-  return `${minutes}:${seconds.toString().padStart(2, "0")} / mi`
-}
-
-function FitBounds({ route }: { route: LatLngExpression[] }) {
-  const map = useMap()
+function FitBounds({ route }: { route: [number, number][] }) {
+  const map = useMap();
   useEffect(() => {
     if (route.length > 1) {
-      map.fitBounds(route as LatLngBoundsExpression, { padding: [20, 20] })
+      map.fitBounds(route as LatLngBoundsExpression, { padding: [20, 20] });
     }
-  }, [route, map])
-  return null
+  }, [route, map]);
+  return null;
 }
 
-export default function RunProgress() {
-  const [logs, setLogs] = useState<RunLog[]>([])
-  const [loading, setLoading] = useState(true)
+export default function RunningHomeCard() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [latest, setLatest] = useState<LogRow>();
+  const [loading, setLoading] = useState(true);
 
+  // Getting the userId
   useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const res = await fetch(`${api}/logs/runs`)
-        const data: RunApiResponse[] = await res.json()
-        const parsed = data.map((run) => ({
-          ...run,
-          route: run.route_json ? JSON.parse(run.route_json) : [],
-        }))
-        setLogs(parsed)
-      } catch (err) {
-        console.error("Failed to fetch run logs:", err)
-      } finally {
-        setLoading(false)
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Failed to get user:", error.message);
+        return;
       }
-    }
+      setUserId(data?.user?.id || null);
+    };
 
-    fetchLogs()
-  }, [])
+    getUser();
+  }, []);
+
+  // Getting the latest log
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchLatestLog = async () => {
+      setLoading(true);
+      const { data: log, error: logError } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("activity_id", ACTIVITY_ID)
+        .order("datetime", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (logError) {
+        console.error("Error fetching latest log:", logError);
+        return;
+      }
+
+      setLatest(log);
+      setLoading(false);
+    };
+    fetchLatestLog();
+  }, [userId]);
 
   if (loading) {
     return (
       <Card title="🏃‍♂️ Latest Run">
         <p className="text-gray-400 italic">Loading...</p>
       </Card>
-    )
+    );
   }
 
-  if (!Array.isArray(logs) || logs.length === 0) {
+  if (!latest) {
     return (
       <Card title="🏃‍♂️ Latest Run">
         <p className="text-gray-400 italic">No runs recorded yet.</p>
       </Card>
-    )
+    );
   }
 
-  const latest = [...logs].sort((a, b) => b.date.localeCompare(a.date))[0]
+  const formattedDatetime = latest?.datetime
+    ? format(new Date(latest.datetime), "MMMM d, yyyy")
+    : "";
+  const relativeDate = latest?.datetime
+    ? formatDistanceToNow(new Date(latest.datetime), { addSuffix: true })
+    : "";
+
+  const startCoords = polyline.decode(latest.data.map.summary_polyline)[0];
 
   return (
     <Card
-      title={`🏃‍♂️ ${latest.name}`}
+      title={`🏃‍♂️ ${latest.data.name}`}
       subtitle={
         <span className="text-gray-400">
-          {latest.date} · {formatDistanceToNow(new Date(latest.date), { addSuffix: true })}
+          {formattedDatetime} · {relativeDate}
         </span>
       }
     >
       <div className="h-[300px] rounded-lg overflow-hidden mb-4">
-        {latest.route?.length > 1 ? (
+        {latest.data.map.summary_polyline ? (
           <MapContainer
-            center={latest.route[0] as LatLngExpression}
-            zoom={15}
+            center={startCoords}
+            zoom={14}
             scrollWheelZoom={true}
             style={{ height: "100%", width: "100%" }}
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <Polyline positions={latest.route} color="#1e293b" weight={8} />
-            <Polyline positions={latest.route} color="#32CD32" weight={4}>
-              <Tooltip sticky>{latest.name}</Tooltip>
+            <Polyline
+              positions={polyline.decode(latest.data.map.summary_polyline)}
+              color="#1e293b"
+              weight={8}
+            />
+            <Polyline
+              positions={polyline.decode(latest.data.map.summary_polyline)}
+              color="#32CD32"
+              weight={4}
+            >
+              <Tooltip sticky>{latest.data.name}</Tooltip>
             </Polyline>
-            <FitBounds route={latest.route} />
+            <FitBounds
+              route={polyline.decode(latest.data.map.summary_polyline)}
+            />
           </MapContainer>
         ) : (
           <div className="flex items-center justify-center h-full text-gray-400 italic bg-slate-700">
@@ -131,15 +160,30 @@ export default function RunProgress() {
       </div>
 
       <div className="text-sm text-gray-200 space-y-1">
-        <p><strong>Distance:</strong> {latest.distance_miles.toFixed(2)} mi</p>
-        <p><strong>Elevation Gain:</strong> {latest.elevation_gain_ft.toFixed(0)} ft</p>
-        <p><strong>Duration:</strong> {formatDuration(latest.duration_minutes)}</p>
-        <p><strong>Pace:</strong> {formatPace(latest.duration_minutes, latest.distance_miles)}</p>
-        {latest.weather && <p><strong>Weather:</strong> {latest.weather}</p>}
-        {latest.notes && (
-          <p className="mt-2 italic text-gray-400 whitespace-pre-line">"{latest.notes}"</p>
-        )}
+        <p>
+          <strong>Distance:</strong>{" "}
+          {metersToMiles(latest.data.distance).toFixed(2)} mi
+        </p>
+        <p>
+          <strong>Elevation Gain:</strong>{" "}
+          {latest.data.total_elevation_gain.toFixed(0)} ft
+        </p>
+        <p>
+          <strong>Duration:</strong>{" "}
+          {latest.data.elapsed_time != null
+            ? formatDuration(latest.data.elapsed_time)
+            : "Time N/A"}
+        </p>
+        <p>
+          <strong>Pace:</strong>{" "}
+          {formatPace(latest.data.elapsed_time, latest.data.distance)}
+        </p>
+        {/* {latest.notes && (
+          <p className="mt-2 italic text-gray-400 whitespace-pre-line">
+            "{latest.notes}"
+          </p>
+        )} */}
       </div>
     </Card>
-  )
+  );
 }
