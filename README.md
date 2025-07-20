@@ -1,21 +1,23 @@
 # Fitness Logger 🏋️‍♂️
 
-A lightweight and responsive fitness logging app that lets you track your workouts, surf sessions, and other activities. Built with **React**, **Supabase**, and **Tailwind CSS**, it features session history, statistics, and location-based visualization via interactive maps.
+A lightweight and responsive fitness logging app that tracks my weight and lifting progress, as well as my outdoor activity sessions (surfing, hiking, running, and snorkeling). Built with **React**, **Supabase**, and **Tailwind CSS**, it features session history, statistics, and location-based visualization via interactive maps.
+
+It also integrates with the **Strava API** to automatically sync and display activities logged on Strava, making it easy to combine personal and tracked data in one place.
 
 ## Features
 
 - 🔐 Authentication via Supabase
-- 📓 Log workouts with custom exercises (e.g., Squat, Bench Press, Deadlift, Pullups, etc.)
-- 📍 View sessions on a map with Leaflet
-- 📈 Analyze session history and stats
-- 🏄 Surf log support with wave height, board used, and notes
-- ⚡ Fast UI built with React and Tailwind
+- 📓 Logs for six different activities: weight tracking, weightlifting, surfing, hiking, running, and snorkeling
+- 📍 View outdoor activities on a map with React-Leaflet + OpenStreetMap
+- 📈 Analyze activity trends with historical statistics
+- ⚡  Fast, mobile-friendly UI with React + Tailwind
 
 ## Tech Stack
 
 - **Frontend**: React + Vite + Tailwind CSS
 - **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
 - **Map**: React-Leaflet + OpenStreetMap
+- **Third-Party Integration**: Strava API
 - **Deployment**: Vercel
 
 ## Getting Started
@@ -23,7 +25,7 @@ A lightweight and responsive fitness logging app that lets you track your workou
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/fitness-logger.git
+git clone https://github.com/colinrec34/fitness-logger.git
 cd fitness-logger
 ```
 
@@ -53,3 +55,13 @@ src/
 ├── App.tsx           # App entry point
 └── main.tsx          # Vite entry file
 ```
+
+## 🔮 Planned Updates
+- Activity editing and deletion
+- Admin dashboard for managing activities (including Strava-connected types) with no hardcoded logic
+
+## 📌 Notes
+This was designed based on my personal logging ambitions, but can be easily extended to other activities and layouts. Generic templates are included in the pages/activities directory for quick addition of new activities. In the future, these templates will generate all the activities themselves, so no pages are hardcoded with custom ```.tsx``` files.
+
+## 📄 License
+MIT © Colin Recker
