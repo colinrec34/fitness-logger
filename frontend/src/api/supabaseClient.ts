@@ -13,17 +13,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 export async function getUser(): Promise<User | null> {
   try {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error('Error getting session:', error);
-      return null;
-    }
-    return data.session?.user ?? null;
+    const res = await fetch('https://rcdkucjsapmykzkiodzu.supabase.co/functions/v1/get-user', {
+      credentials: 'include',
+    });
+    if (!res.ok) return null;
+    const { user } = await res.json();
+    return user;
   } catch (err) {
-    console.error('Unexpected error getting user:', err);
+    console.error('Unexpected error getting user from cookie:', err);
     return null;
   }
 }
+
 
 export async function signIn(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
