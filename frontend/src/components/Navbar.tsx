@@ -15,8 +15,13 @@ export default function Navbar() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   async function fetchUser() {
-    const user = await getUser(); // calls the edge function with cookie
-    setUserEmail(user?.email ?? null);
+    try {
+      const user = await getUser();
+      setUserEmail(user?.email ?? null);
+    } catch (err) {
+      console.error("Error fetching user:", err);
+      setUserEmail(null);
+    }
   }
 
   useEffect(() => {
