@@ -170,7 +170,7 @@ export default function HikingHomeCard() {
         </p>
         <p>
           <strong>Pace:</strong>{" "}
-          {formatPace(latest.data.elapsed_time, latest.data.distance)}
+          {formatPace(latest.data.elapsed_time, metersToMiles(latest.data.distance))}
         </p>
         {/* {latest.notes && (
           <p className="mt-2 italic text-gray-400 whitespace-pre-line">
