@@ -13,7 +13,7 @@ import polyline from "@mapbox/polyline";
 import { format } from "date-fns";
 
 import { supabase } from "../../../api/supabaseClient";
-const HIKING_ACTIVITY_ID = "a2fb0a80-f149-4761-a339-aeb282ba06a9";
+const ACTIVITY_ID = "a2fb0a80-f149-4761-a339-aeb282ba06a9";
 
 import type { LogRow } from "./types";
 
@@ -93,7 +93,7 @@ export default function Hike() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
-        .eq("activity_id", HIKING_ACTIVITY_ID)
+        .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
       if (error) {
