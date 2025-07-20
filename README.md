@@ -49,7 +49,7 @@ src/
 ├── api/              # Supabase client + API utilities
 ├── components/       # Reusable UI elements
 ├── lib/              # Supabase api tools
-├── pages/            # Activity pages (lifting, surf, etc.)
+├── pages/            # Activity pages (lifting, surf, etc.) and Home/Login pages
 ├── App.tsx           # App entry point
 └── main.tsx          # Vite entry file
 ```
