@@ -9,7 +9,7 @@ import {
   useMap,
 } from "react-leaflet";
 import { supabase } from "../../../api/supabaseClient";
-const SURFING_ACTIVITY_ID = "0ddcfe52-2da0-47b6-a44a-e282f54ac21d";
+const ACTIVITY_ID = "0ddcfe52-2da0-47b6-a44a-e282f54ac21d";
 
 import type { LocationRow, LogRow } from "./types";
 
@@ -63,7 +63,7 @@ export default function Surf() {
 
       const { error } = await supabase.from("locations").insert({
         user_id: user.id,
-        activity_id: SURFING_ACTIVITY_ID,
+        activity_id: ACTIVITY_ID,
         name: newLocationName,
         lat: parseFloat(newLat),
         lon: parseFloat(newLon),
@@ -78,7 +78,7 @@ export default function Surf() {
       const { data } = await supabase
         .from("locations")
         .select("*")
-        .eq("activity_id", SURFING_ACTIVITY_ID);
+        .eq("activity_id", ACTIVITY_ID);
       if (data) setLocations(data);
     } catch (err) {
       console.error("Failed to add location:", err);
@@ -92,7 +92,7 @@ export default function Surf() {
       const { data, error } = await supabase
         .from("locations")
         .select("*")
-        .eq("activity_id", SURFING_ACTIVITY_ID);
+        .eq("activity_id", ACTIVITY_ID);
       if (error) {
         console.error("Error fetching locations:", error);
         setLocations([]);
@@ -109,7 +109,7 @@ export default function Surf() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
-        .eq("activity_id", SURFING_ACTIVITY_ID)
+        .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
       if (error) {
@@ -142,7 +142,7 @@ export default function Surf() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
-        .eq("activity_id", SURFING_ACTIVITY_ID)
+        .eq("activity_id", ACTIVITY_ID)
         .gte("datetime", startISO)
         .lte("datetime", endISO)
         .limit(1)
@@ -196,7 +196,7 @@ export default function Surf() {
       const { data: locMatch, error: locError } = await supabase
         .from("locations")
         .select("id")
-        .eq("activity_id", SURFING_ACTIVITY_ID)
+        .eq("activity_id", ACTIVITY_ID)
         .eq("name", form.location)
         .single();
 
@@ -204,7 +204,7 @@ export default function Surf() {
 
       const payload = {
         user_id: user.id,
-        activity_id: SURFING_ACTIVITY_ID,
+        activity_id: ACTIVITY_ID,
         datetime: new Date(datetime).toISOString(),
         location_id: locMatch.id,
         data: {
@@ -229,7 +229,7 @@ export default function Surf() {
       const { data: updatedLogs, error: fetchError } = await supabase
         .from("logs")
         .select("*")
-        .eq("activity_id", SURFING_ACTIVITY_ID)
+        .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
       if (fetchError) {
