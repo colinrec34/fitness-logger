@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState} from "react";
 import {
   MapContainer,
   TileLayer,
@@ -8,7 +8,6 @@ import {
   useMap,
 } from "react-leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
-import type { Map as LeafletMap } from "leaflet";
 import polyline from "@mapbox/polyline";
 import { format } from "date-fns";
 
