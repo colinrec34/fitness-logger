@@ -1,28 +1,13 @@
 import { useEffect, useState } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  useMap,
-} from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
-import { formatDistanceToNowStrict } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import Card from "../../../components/Card";
 
-const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+import { supabase } from "../../../api/supabaseClient";
+const ACTIVITY_ID = "c9585467-e875-4b95-91fe-4263493854b0";
 
-type SnorkelLog = {
-  id: number;
-  date: string;
-  location: string;
-  board: string;
-  duration_minutes: number;
-  waves_caught: number;
-  wave_height?: string;
-  notes?: string;
-  coordinates?: [number, number];
-};
+import type { LocationRow, LogRow } from "./types";
 
 function FitToMarker({ coordinates }: { coordinates: [number, number] }) {
   const map = useMap();
@@ -32,62 +17,116 @@ function FitToMarker({ coordinates }: { coordinates: [number, number] }) {
   return null;
 }
 
-export default function SnorkelingProgress() {
-  const [latest, setLatest] = useState<SnorkelLog | null>(null);
+export default function SnorkelingHomeCard() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [latest, setLatest] = useState<LogRow>();
+  const [latestLocation, setLatestLocation] = useState<LocationRow>();
 
+  // Getting the userId
   useEffect(() => {
-    fetch(`${api}/logs/snorkelling`)
-      .then((res) => res.json())
-      .then((data: SnorkelLog[]) => {
-        const sorted = [...data]
-          .filter((log) => log.coordinates)
-          .sort((a, b) => b.date.localeCompare(a.date));
-        setLatest(sorted[0] ?? null);
-      })
-      .catch((err) => console.error("Failed to fetch snorkelling logs:", err));
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Failed to get user:", error.message);
+        return;
+      }
+      setUserId(data?.user?.id || null);
+    };
+
+    getUser();
   }, []);
 
-  const subtitle =
-    latest?.date &&
-    `${latest.date} · ${formatDistanceToNowStrict(new Date(latest.date))} ago`;
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchLatestLog = async () => {
+      const { data: log, error: logError } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("activity_id", ACTIVITY_ID)
+        .order("datetime", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (logError) {
+        console.error("Error fetching latest log:", logError);
+        return;
+      }
+
+      setLatest(log);
+
+      if (log.location_id) {
+        const { data: location, error: locationError } = await supabase
+          .from("locations")
+          .select("*")
+          .eq("id", log.location_id)
+          .single();
+
+        if (locationError) {
+          console.error("Error fetching location:", locationError);
+        } else {
+          setLatestLocation(location);
+        }
+      }
+    };
+
+    fetchLatestLog();
+  }, [userId]);
+
+  const formattedDatetime = latest?.datetime
+    ? format(new Date(latest.datetime), "MMMM d, yyyy")
+    : "";
+  const relativeDate = latest?.datetime
+    ? formatDistanceToNow(new Date(latest.datetime), { addSuffix: true })
+    : "";
 
   return (
     <Card
-      title={`🤿 ${latest?.location ?? "Last Snorkelling Session"}`}
-      subtitle={subtitle && <span className="text-gray-400 text-sm">{subtitle}</span>}
+      title={`🤿 ${latestLocation?.name ?? "Last Snorkeling Session"}`}
+      subtitle={
+        <span className="text-gray-400">
+          {formattedDatetime} · {relativeDate}
+        </span>
+      }
       footer={
-        latest?.notes && (
-          <p className="pt-2 text-gray-400 italic">“{latest.notes}”</p>
+        latest?.data.notes && (
+          <p className="pt-2 text-gray-400 italic">“{latest.data.notes}”</p>
         )
       }
     >
-      {latest && latest.coordinates ? (
+      {latest && latestLocation?.lat != null && latestLocation?.lon != null ? (
         <>
           <div className="h-[300px] rounded-lg overflow-hidden mb-4">
             <MapContainer
-              center={latest.coordinates as LatLngExpression}
+              center={
+                [latestLocation?.lat, latestLocation?.lon] as LatLngExpression
+              }
               zoom={11}
               className="h-full w-full"
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <Marker position={latest.coordinates as LatLngExpression}>
-                <Popup>{latest.location}</Popup>
+              <Marker
+                position={
+                  [latestLocation?.lat, latestLocation?.lon] as LatLngExpression
+                }
+              >
+                <Popup>{latestLocation?.name}</Popup>
               </Marker>
-              <FitToMarker coordinates={latest.coordinates} />
+              <FitToMarker
+                coordinates={[latestLocation?.lat, latestLocation?.lon]}
+              />
             </MapContainer>
           </div>
 
           <ul className="text-gray-300 text-sm space-y-1">
-            <li><strong>Board:</strong> {latest.board}</li>
-            <li><strong>Duration:</strong> {latest.duration_minutes} min</li>
-            <li><strong>Waves Spotted:</strong> {latest.waves_caught}</li>
-            {latest.wave_height && (
-              <li><strong>Wave Height:</strong> {latest.wave_height}</li>
-            )}
+            <li>
+              <strong>Duration:</strong> {latest.data.duration} min
+            </li>
           </ul>
         </>
       ) : (
-        <p className="text-gray-400 italic">No snorkelling data available.</p>
+        <p className="text-gray-400 italic">No data available.</p>
       )}
     </Card>
   );

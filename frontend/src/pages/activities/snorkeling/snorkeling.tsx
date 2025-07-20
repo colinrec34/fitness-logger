@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { LatLngExpression, LatLngBoundsExpression } from "leaflet";
+import { format } from "date-fns";
 import {
   MapContainer,
   TileLayer,
@@ -7,206 +8,280 @@ import {
   Tooltip,
   useMap,
 } from "react-leaflet";
+import { supabase } from "../../../api/supabaseClient";
+const ACTIVITY_ID = "c9585467-e875-4b95-91fe-4263493854b0";
 
-const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+import type { LocationRow, LogRow } from "./types";
 
-type SnorkelLog = {
-  id: number;
-  date: string;
-  location: string;
-  duration_minutes: number;
-  notes?: string;
-  coordinates?: [number, number];
-};
+export default function Snorkeling() {
+  const [showAddLocation, setShowAddLocation] = useState(false);
 
-type LocationEntry = {
-  name: string;
-  coordinates: [number, number];
-};
+  // Datetime initialization to current time and variables
+  const [datetime, setDatetime] = useState(() => {
+    const now = new Date();
+    now.setSeconds(0, 0); // Remove seconds and ms
 
-type LocationApiResponse = {
-  name: string;
-  lat: number;
-  lon: number;
-};
+    const pad = (n: number) => n.toString().padStart(2, "0");
 
-function FitBounds({ points }: { points: LatLngExpression[] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (points.length > 1) {
-      map.fitBounds(points as LatLngBoundsExpression, { padding: [20, 20] });
-    }
-  }, [points, map]);
-  return null;
-}
+    const year = now.getFullYear();
+    const month = pad(now.getMonth() + 1); // Months are 0-indexed
+    const day = pad(now.getDate());
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
 
-export default function Snorkelling() {
-  const [logs, setLogs] = useState<SnorkelLog[]>([]);
-  const [locations, setLocations] = useState<LocationEntry[]>([]);
-  const [form, setForm] = useState({
-    date: new Date().toISOString().split("T")[0],
-    location: "",
-    duration_minutes: 0,
-    notes: "",
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   });
 
-  const [newLocation, setNewLocation] = useState("");
+  const [logs, setLogs] = useState<LogRow[]>([]);
+  const [locations, setLocations] = useState<LocationRow[]>([]);
+  const [newLocationName, setNewLocationName] = useState("");
   const [newLat, setNewLat] = useState("");
   const [newLon, setNewLon] = useState("");
 
-  const [editMode, setEditMode] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-
-  const groupedLogs = locations.map((loc) => {
-    const matchingLogs = logs.filter((log) => log.location === loc.name);
-    return {
-      name: loc.name,
-      coordinates: loc.coordinates,
-      logs: matchingLogs,
-    };
+  const [form, setForm] = useState({
+    location: "",
+    duration: 0,
+    notes: "",
   });
 
+  async function addNewLocation() {
+    if (!newLocationName || !newLat || !newLon) {
+      alert("Please provide name, lat, and lon.");
+      return;
+    }
+
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !user)
+        throw authError || new Error("User not authenticated");
+
+      const { error } = await supabase.from("locations").insert({
+        user_id: user.id,
+        activity_id: ACTIVITY_ID,
+        name: newLocationName,
+        lat: parseFloat(newLat),
+        lon: parseFloat(newLon),
+      });
+
+      if (error) throw error;
+
+      setNewLocationName("");
+      setNewLat("");
+      setNewLon("");
+      // Re-fetch locations
+      const { data } = await supabase
+        .from("locations")
+        .select("*")
+        .eq("activity_id", ACTIVITY_ID);
+      if (data) setLocations(data);
+    } catch (err) {
+      console.error("Failed to add location:", err);
+      alert("Error adding location.");
+    }
+  }
+
+  // Fetches locations
   useEffect(() => {
-    const fetchAll = async () => {
-      try {
-        const [logRes, locRes] = await Promise.all([
-          fetch(`${api}/logs/snorkeling`),
-          fetch(`${api}/snorkelinglocation`),
-        ]);
-
-        const [logsData, locationsData] = await Promise.all([
-          logRes.json(),
-          locRes.json(),
-        ]);
-
-        setLogs(Array.isArray(logsData) ? logsData : []);
-        const parsedLocations: LocationEntry[] = locationsData.map((l: any) => ({
-          name: l.name,
-          coordinates: [l.lat, l.lon],
-        }));
-        setLocations(parsedLocations);
-
-        if (parsedLocations.length > 0) {
-          setForm((prev) => ({
-            ...prev,
-            location: parsedLocations[0].name,
-          }));
-        }
-      } catch (err) {
-        console.error("❌ Failed to fetch snorkelling data:", err);
+    async function fetchAllLocations() {
+      const { data, error } = await supabase
+        .from("locations")
+        .select("*")
+        .eq("activity_id", ACTIVITY_ID);
+      if (error) {
+        console.error("Error fetching locations:", error);
+        setLocations([]);
+      } else if (data) {
+        setLocations(data);
       }
-    };
-
-    fetchAll();
+    }
+    fetchAllLocations();
   }, []);
+
+  // Fetches logs
+  useEffect(() => {
+    async function fetchAllLogs() {
+      const { data, error } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("activity_id", ACTIVITY_ID)
+        .order("datetime", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching logs:", error);
+        setLogs([]);
+      } else if (data) {
+        setLogs(data);
+      }
+    }
+    fetchAllLogs();
+  }, []);
+
+  // Fetch single log for selected date and populate form
+  useEffect(() => {
+    async function fetchLogForDate() {
+      const selectedDate = new Date(datetime);
+      if (isNaN(selectedDate.getTime())) {
+        console.warn("Invalid datetime value:", datetime);
+        return;
+      }
+
+      const start = new Date(selectedDate);
+      start.setHours(0, 0, 0, 0);
+      const startISO = start.toISOString();
+
+      const end = new Date(selectedDate);
+      end.setHours(23, 59, 59, 999);
+      const endISO = end.toISOString();
+
+      const { data, error } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("activity_id", ACTIVITY_ID)
+        .gte("datetime", startISO)
+        .lte("datetime", endISO)
+        .limit(1)
+        .maybeSingle();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching log:", error);
+        return;
+      }
+
+      if (data) {
+        setForm({
+          location: data.location || "",
+          duration: data.duration || 0,
+          notes: data.notes || "",
+        });
+      } else {
+        // If no log exists, reset the form
+        setForm({
+          location: "",
+          duration: 0,
+          notes: "",
+        });
+      }
+    }
+
+    fetchLogForDate();
+  }, [datetime]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch(`${api}/logs/snorkeling`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
-      const newLog = await res.json();
-      setLogs((prev) => [...prev, newLog]);
-      setForm({
-        date: new Date().toISOString().split("T")[0],
-        location: locations[0]?.name || "",
-        duration_minutes: 0,
-        notes: "",
-      });
-    }
-  };
 
-  const addNewLocation = async () => {
-    if (newLocation && newLat && newLon && !locations.some((l) => l.name === newLocation)) {
-      const lat = parseFloat(newLat);
-      const lon = parseFloat(newLon);
-      try {
-        const res = await fetch(`${api}/snorkelinglocation`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: newLocation, lat, lon }),
-        });
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-        if (!res.ok) throw new Error("Failed to add location");
+    if (authError) throw authError;
+    if (!user) throw new Error("User not authenticated");
 
-        const newLoc = await res.json();
-        const entry = {
-          name: newLoc.name,
-          coordinates: [newLoc.lat, newLoc.lon] as [number, number],
-        };
-        setLocations((prev) => [...prev, entry]);
-        setForm((prev) => ({
-          ...prev,
-          location: entry.name,
-        }));
-        setNewLocation("");
-        setNewLat("");
-        setNewLon("");
-      } catch (err) {
-        console.error("❌ Error adding location:", err);
+    try {
+      console.log("userId:", user.id);
+      console.log("locationName:", form.location);
+
+      const { data: locMatch, error: locError } = await supabase
+        .from("locations")
+        .select("id")
+        .eq("activity_id", ACTIVITY_ID)
+        .eq("name", form.location)
+        .single();
+
+      if (locError) throw locError;
+
+      const payload = {
+        user_id: user.id,
+        activity_id: ACTIVITY_ID,
+        datetime: new Date(datetime).toISOString(),
+        location_id: locMatch.id,
+        data: {
+          duration: form.duration,
+          notes: form.notes,
+        },
+      };
+
+      // Upsert on conflict (activity_id, datetime)
+      const { error } = await supabase
+        .from("logs")
+        .upsert(payload, { onConflict: "activity_id,datetime" });
+
+      if (error) throw error;
+
+      alert("Snorkeling session logged!");
+
+      // Refresh logs for charts
+      const { data: updatedLogs, error: fetchError } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("activity_id", ACTIVITY_ID)
+        .order("datetime", { ascending: true });
+
+      if (fetchError) {
+        console.error("Error refreshing logs:", fetchError);
+      } else if (updatedLogs) {
+        setLogs(updatedLogs);
       }
+    } catch (error) {
+      console.error("❌ Submission error:", error);
+      alert("Failed to save log. Please check your inputs.");
     }
   };
 
-  useEffect(() => {
-    const existing = logs.find((log) => log.date === form.date);
-    if (existing) {
-      setForm({
-        date: existing.date,
-        location: existing.location,
-        duration_minutes: existing.duration_minutes,
-        notes: existing.notes || "",
+  function groupLogsByLocation(logs: LogRow[], locations: LocationRow[]) {
+    const locationMap = new Map(locations.map((loc) => [loc.id, loc]));
+
+    const grouped = new Map<
+      string,
+      {
+        name: string;
+        coordinates: [number, number];
+        logs: { id: string; date: string; waves: number }[];
+      }
+    >();
+
+    for (const log of logs) {
+      if (!log.location_id) continue;
+      const location = locationMap.get(log.location_id);
+      if (!location) continue;
+
+      const date = new Date(log.datetime).toLocaleDateString();
+
+      if (!grouped.has(location.id)) {
+        grouped.set(location.id, {
+          name: location.name,
+          coordinates: [location.lat, location.lon],
+          logs: [],
+        });
+      }
+
+      grouped.get(location.id)!.logs.push({
+        id: log.id,
+        date,
+        waves: log.data.duration ?? 0,
       });
-      setEditMode(true);
-      setEditingId(existing.id);
-    } else {
-      setForm((prev) => ({
-        ...prev,
-        location: locations[0]?.name || "",
-        duration_minutes: 0,
-        notes: "",
-      }));
-      setEditMode(false);
-      setEditingId(null);
     }
-  }, [form.date, logs, locations]);
 
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingId) return;
-    const res = await fetch(`${api}/logs/snorkeling/${editingId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setLogs((prev) => prev.map((log) => (log.id === updated.id ? updated : log)));
-      setEditMode(false);
-      setEditingId(null);
-    }
-  };
+    return Array.from(grouped.values());
+  }
 
-  useEffect(() => {
-    const selected = locations.find((l) => l.name === form.location);
-    if (selected) {
-      setForm((prev) => ({
-        ...prev,
-        coordinates: selected.coordinates,
-      }));
-    }
-  }, [form.location, locations]);
+  const groupedLogsByLocation = groupLogsByLocation(logs, locations);
 
+  // Statistics
   const totalSessions = logs.length;
-  const totalDuration = logs.reduce((sum, l) => sum + l.duration_minutes, 0);
+  const totalDuration = logs.reduce(
+    (sum, log) => sum + (log.data?.duration ?? 0),
+    0
+  );
 
   return (
     <div className="flex flex-col md:flex-row gap-8 p-6">
+      {/* Left Column */}
       <div className="flex-1 space-y-6">
-        <h1 className="text-3xl font-bold">Log a Snorkelling Session</h1>
+        <h1 className="text-3xl font-bold">Log a Snorkeling Session</h1>
         <form
           onSubmit={handleSubmit}
           className="space-y-4 bg-slate-800 p-6 rounded-xl shadow-md"
@@ -214,10 +289,10 @@ export default function Snorkelling() {
           <div>
             <label className="block mb-1">Date</label>
             <input
-              type="date"
+              type="datetime-local"
               className="w-full p-2 rounded bg-slate-700 text-white"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              value={datetime}
+              onChange={(e) => setDatetime(e.target.value)}
             />
           </div>
 
@@ -228,41 +303,53 @@ export default function Snorkelling() {
               value={form.location}
               onChange={(e) => setForm({ ...form, location: e.target.value })}
             >
+              <option value="">Select location...</option>
               {locations.map((loc) => (
                 <option key={loc.name} value={loc.name}>
                   {loc.name}
                 </option>
               ))}
             </select>
-            <div className="mt-2 space-y-2">
-              <input
-                className="w-full p-2 rounded bg-slate-700 text-white"
-                placeholder="Add new location name"
-                value={newLocation}
-                onChange={(e) => setNewLocation(e.target.value)}
-              />
-              <div className="flex gap-2">
+
+            <button
+              type="button"
+              className="mt-2 text-blue-400"
+              onClick={() => setShowAddLocation((prev) => !prev)}
+            >
+              {showAddLocation ? "Cancel" : "+ Add new location"}
+            </button>
+
+            {showAddLocation && (
+              <div className="mt-2 space-y-2">
                 <input
-                  className="w-1/2 p-2 rounded bg-slate-700 text-white"
-                  placeholder="Lat"
-                  value={newLat}
-                  onChange={(e) => setNewLat(e.target.value)}
+                  className="w-full p-2 rounded bg-slate-700 text-white"
+                  placeholder="Add new location name"
+                  value={newLocationName}
+                  onChange={(e) => setNewLocationName(e.target.value)}
                 />
-                <input
-                  className="w-1/2 p-2 rounded bg-slate-700 text-white"
-                  placeholder="Lon"
-                  value={newLon}
-                  onChange={(e) => setNewLon(e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <input
+                    className="w-1/2 p-2 rounded bg-slate-700 text-white"
+                    placeholder="Lat"
+                    value={newLat}
+                    onChange={(e) => setNewLat(e.target.value)}
+                  />
+                  <input
+                    className="w-1/2 p-2 rounded bg-slate-700 text-white"
+                    placeholder="Lon"
+                    value={newLon}
+                    onChange={(e) => setNewLon(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={addNewLocation}
+                  className="bg-blue-500 px-3 py-1 rounded text-white w-full"
+                >
+                  Add New Location
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={addNewLocation}
-                className="bg-blue-500 px-3 py-1 rounded text-white w-full"
-              >
-                Add New Location
-              </button>
-            </div>
+            )}
           </div>
 
           <div>
@@ -270,11 +357,11 @@ export default function Snorkelling() {
             <input
               type="number"
               className="w-full p-2 rounded bg-slate-700 text-white"
-              value={form.duration_minutes}
+              value={form.duration}
               onChange={(e) =>
                 setForm({
                   ...form,
-                  duration_minutes: parseInt(e.target.value || "0"),
+                  duration: parseInt(e.target.value || "0"),
                 })
               }
             />
@@ -289,28 +376,50 @@ export default function Snorkelling() {
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
           </div>
-
-          {editMode ? (
-            <button
-              type="button"
-              onClick={handleUpdate}
-              className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded text-white"
-            >
-              Update Log
-            </button>
-          ) : (
-            <button
-              type="submit"
-              className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white"
-            >
-              Submit
-            </button>
-          )}
+          <button
+            type="submit"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded w-full"
+          >
+            Save Session
+          </button>
         </form>
+
+        <div className="bg-slate-800 rounded-xl p-4 max-h-[400px] overflow-y-auto shadow-md">
+          <h2 className="text-xl font-semibold mb-2">
+            Snorkeling Session History
+          </h2>
+          {logs.length === 0 ? (
+            <p className="italic text-gray-400">No sessions logged yet.</p>
+          ) : (
+            <ul className="space-y-4">
+              {logs
+                .slice()
+                .sort((a, b) => b.datetime.localeCompare(a.datetime)) // Reverse chronological
+                .map((log) => (
+                  <li key={log.id} className="border-b border-slate-600 pb-2">
+                    <div className="font-semibold text-white">
+                      {format(new Date(log.datetime), "yyyy-MM-dd")}:{" "}
+                      {locations.find((l) => l.id === log.location_id)?.name ||
+                        "Unknown location"}
+                    </div>
+                    <div className="text-sm text-gray-300">
+                      {log.data.duration} minutes
+                    </div>
+                    {log.data.notes && (
+                      <div className="text-sm text-gray-400 mt-1 italic">
+                        {log.data.notes}
+                      </div>
+                    )}
+                  </li>
+                ))}
+            </ul>
+          )}
+        </div>
       </div>
 
+      {/* Right Column */}
       <div className="md:w-1/2 space-y-6">
-        <h1 className="text-3xl font-bold">Snorkelling Stats</h1>
+        <h1 className="text-3xl font-bold">Snorkeling Statistics</h1>
         <div className="bg-slate-800 p-6 rounded-xl shadow-md">
           <ul className="space-y-1">
             <li>Total sessions: {totalSessions}</li>
@@ -329,24 +438,39 @@ export default function Snorkelling() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution="&copy; OpenStreetMap contributors"
             />
-            {groupedLogs.map(({ name, coordinates, logs }) => (
+            {groupedLogsByLocation.map(({ name, coordinates, logs }) => (
               <Marker key={name} position={coordinates}>
                 <Tooltip direction="top">
                   <div className="text-sm">
                     <div className="font-semibold">{name}</div>
                     {logs.map((log) => (
-                      <div key={log.id}>{log.date} · {log.duration_minutes} min</div>
+                      <div key={log.id}>
+                        {log.date} · {log.waves} waves
+                      </div>
                     ))}
                   </div>
                 </Tooltip>
               </Marker>
             ))}
+
             <FitBounds
-              points={logs.filter((l) => l.coordinates).map((l) => l.coordinates!)}
+              points={locations
+                .filter((l) => [l.lat, l.lon])
+                .map((l) => [l.lat, l.lon]!)}
             />
           </MapContainer>
         </div>
       </div>
     </div>
   );
+}
+
+function FitBounds({ points }: { points: LatLngExpression[] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (points.length > 1) {
+      map.fitBounds(points as LatLngBoundsExpression, { padding: [20, 20] });
+    }
+  }, [points, map]);
+  return null;
 }
