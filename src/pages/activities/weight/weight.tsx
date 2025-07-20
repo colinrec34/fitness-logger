@@ -3,7 +3,7 @@ import WeightProgress from "./WeightHomeCard";
 
 import { supabase } from "../../../api/supabaseClient";
 import type { LogRow } from "./types"
-const WEIGHT_ACTIVITY_ID = "3bacbc7e-4e70-435a-8927-ccc7ff1568b7";
+const ACTIVITY_ID = "3bacbc7e-4e70-435a-8927-ccc7ff1568b7";
 
 export default function Weight() {
   const [datetime, setDatetime] = useState(() => {
@@ -28,7 +28,7 @@ export default function Weight() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
-        .eq("activity_id", WEIGHT_ACTIVITY_ID)
+        .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
       if (error) {
@@ -61,7 +61,7 @@ export default function Weight() {
 
     const payload = {
       user_id: user.id,
-      activity_id: WEIGHT_ACTIVITY_ID,
+      activity_id: ACTIVITY_ID,
       datetime: new Date(datetime).toISOString(),
       data: {
         weight: weight,

@@ -3,7 +3,7 @@ import Card from "../../../components/Card";
 import { format, formatDistanceToNow } from "date-fns";
 import { supabase } from "../../../api/supabaseClient";
 
-const LIFTING_ACTIVITY_ID = "e07d19fd-c9a0-42f0-a110-01d532a5b66d";
+const ACTIVITY_ID = "e07d19fd-c9a0-42f0-a110-01d532a5b66d";
 
 import type {
   LogRow,
@@ -39,7 +39,7 @@ export default function LiftProgress() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
-        .eq("activity_id", LIFTING_ACTIVITY_ID)
+        .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
       if (error) {
