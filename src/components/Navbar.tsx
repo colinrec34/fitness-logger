@@ -24,29 +24,44 @@ export default function Navbar() {
     }
   }
 
-  useEffect(() => {
-    async function fetchActivities() {
-      const { data, error } = await supabase
-        .from("activities")
-        .select("slug, display_name, placement_row, placement_col")
-        .eq("is_active", true);
+  async function fetchActivities() {
+    const { data, error } = await supabase
+      .from("activities")
+      .select("slug, display_name, placement_row, placement_col")
+      .eq("is_active", true);
 
-      if (error) {
-        console.error("Error fetching activities:", error);
-        return;
-      }
-
-      const sorted = (data || []).sort((a, b) => {
-        if (a.placement_row === b.placement_row) {
-          return a.placement_col - b.placement_col;
-        }
-        return a.placement_row - b.placement_row;
-      });
-
-      setActivities(sorted);
+    if (error) {
+      console.error("Error fetching activities:", error);
+      setActivities([]);
+      return;
     }
+
+    const sorted = (data || []).sort((a, b) => {
+      if (a.placement_row === b.placement_row) {
+        return a.placement_col - b.placement_col;
+      }
+      return a.placement_row - b.placement_row;
+    });
+
+    setActivities(sorted);
+  }
+
+  useEffect(() => {
     fetchUser();
     fetchActivities();
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null);
+      if (!session) {
+        setActivities([]); // Clear activities on logout/session expiration
+      } else {
+        fetchActivities(); // Fetch on login
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   return (
@@ -71,14 +86,18 @@ export default function Navbar() {
             Signed in as {userEmail}
           </span>
         )}
-        {/* {userEmail && (
+        {userEmail && (
           <button
-            onClick={handleLogout}
+            onClick={async () => {
+              await supabase.auth.signOut();
+              setUserEmail(null);
+              setActivities([]);
+            }}
             className="bg-yellow-400 text-black px-3 py-1 rounded hover:bg-yellow-300 text-sm"
           >
             Logout
           </button>
-        )} */}
+        )}
       </div>
     </nav>
   );
