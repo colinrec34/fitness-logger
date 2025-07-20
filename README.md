@@ -25,3 +25,31 @@ A lightweight and responsive fitness logging app that lets you track your workou
 ```bash
 git clone https://github.com/your-username/fitness-logger.git
 cd fitness-logger
+```
+
+### 2. Install npm dependencies
+```bash
+npm install
+```
+
+### 3. Define environment variables
+```
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### 4. Start Local Dev Server
+```bash
+npm run dev
+```
+
+## Project Structure
+```
+src/
+├── api/              # Supabase client + API utilities
+├── components/       # Reusable UI elements
+├── lib/              # Supabase api tools
+├── pages/            # Activity pages (lifting, surf, etc.)
+├── App.tsx           # App entry point
+└── main.tsx          # Vite entry file
+```
