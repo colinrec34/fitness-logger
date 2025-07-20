@@ -504,7 +504,9 @@ export default function Lifts() {
         </form>
         {/* Session History */}
         <div className="bg-slate-800 rounded-xl p-4 max-h-[800px] overflow-y-auto shadow-md">
-          <h2 className="text-xl font-semibold mb-2">Lifting Session History</h2>
+          <h2 className="text-xl font-semibold mb-2">
+            Lifting Session History
+          </h2>
           {logs.length === 0 ? (
             <p className="italic text-gray-400">No sessions logged yet.</p>
           ) : (
@@ -525,8 +527,14 @@ export default function Lifts() {
                           `Bench Press: ${log.data.bench?.work[0].weight} lbs`,
                         (log.data.deadlift?.work?.[0]?.weight ?? 0) > 0 &&
                           `Deadlift: ${log.data.deadlift?.work[0].weight} lbs`,
-                        (log.data.pullups?.[0]?.reps ?? 0) > 0 &&
-                          `Pullups: ${log.data.pullups?.[0].reps} reps/set`,
+                        (() => {
+                          const pullup = log.data.pullups?.[0];
+                          const sets = log.data.pullups?.length ?? 1;
+                          if ((pullup?.reps ?? 0) > 0) {
+                            return `Pullups: ${(pullup?.reps ?? 0) * sets} reps`;
+                          }
+                          return null;
+                        })(),
                         (log.data.overhead?.work?.[0]?.weight ?? 0) > 0 &&
                           `Overhead: ${log.data.overhead?.work[0].weight} lbs`,
                         (log.data.clean?.work?.[0]?.weight ?? 0) > 0 &&
@@ -535,6 +543,7 @@ export default function Lifts() {
                         .filter(Boolean)
                         .join(" · ")}
                     </div>
+
                     {log.data.notes && (
                       <div className="text-sm text-gray-400 mt-1 italic">
                         {log.data.notes}
