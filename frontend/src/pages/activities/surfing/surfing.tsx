@@ -422,8 +422,15 @@ export default function Surf() {
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
           </div>
+          <button
+            type="submit"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded w-full"
+          >
+            Save Session
+          </button>
         </form>
 
+        {/* SESSION HISTORY */}
         <div className="bg-slate-800 rounded-xl p-4 max-h-[400px] overflow-y-auto shadow-md">
           <h2 className="text-xl font-semibold mb-2">Surf Session History</h2>
           {logs.length === 0 ? (

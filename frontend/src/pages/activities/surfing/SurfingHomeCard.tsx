@@ -5,7 +5,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import Card from "../../../components/Card";
 
 import { supabase } from "../../../api/supabaseClient";
-const SURFING_ACTIVITY_ID = "0ddcfe52-2da0-47b6-a44a-e282f54ac21d";
+const ACTIVITY_ID = "0ddcfe52-2da0-47b6-a44a-e282f54ac21d";
 
 import type { LocationRow, LogRow } from "./types";
 
@@ -44,7 +44,7 @@ export default function SurfProgress() {
         .from("logs")
         .select("*")
         .eq("user_id", userId)
-        .eq("activity_id", SURFING_ACTIVITY_ID)
+        .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: false })
         .limit(1)
         .single();
@@ -137,7 +137,7 @@ export default function SurfProgress() {
           </ul>
         </>
       ) : (
-        <p className="text-gray-400 italic">No surf data available.</p>
+        <p className="text-gray-400 italic">No data available.</p>
       )}
     </Card>
   );
