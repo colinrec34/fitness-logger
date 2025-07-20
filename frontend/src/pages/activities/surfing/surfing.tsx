@@ -443,7 +443,7 @@ export default function Surf() {
                 .map((log) => (
                   <li key={log.id} className="border-b border-slate-600 pb-2">
                     <div className="font-semibold text-white">
-                      {format(new Date(log.datetime), "yyyy-MM-dd")}:{" "}
+                      {format(new Date(log.datetime), "MMMM dd, yyyy")}:{" "}
                       {locations.find((l) => l.id === log.location_id)?.name ||
                         "Unknown location"}
                     </div>
