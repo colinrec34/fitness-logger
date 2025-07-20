@@ -58,7 +58,7 @@ src/
 
 ## 🔮 Planned Updates
 - Activity editing and deletion
-- Admin dashboard for managing activities (including Strava-connected types) with no hardcoded logic
+- Admin dashboard for managing activities (including Strava-connected types) with no hardcoded pages
 
 ## 📌 Notes
 This was designed based on my personal logging ambitions, but can be easily extended to other activities and layouts. Generic templates are included in the pages/activities directory for quick addition of new activities. In the future, these templates will generate all the activities themselves, so no pages are hardcoded with custom ```.tsx``` files.
