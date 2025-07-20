@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../api/supabaseClient";
+import { getUser } from "../api/supabaseClient";
 
 interface Activity {
   slug: string;
@@ -14,9 +15,7 @@ export default function Navbar() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   async function fetchUser() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser(); // calls the edge function with cookie
     setUserEmail(user?.email ?? null);
   }
 
@@ -62,7 +61,11 @@ export default function Navbar() {
         ))}
       </div>
       <div className="flex items-center gap-4">
-        {userEmail && <span className="text-sm text-slate-300">Signed in as {userEmail}</span>}
+        {userEmail && (
+          <span className="text-sm text-slate-300">
+            Signed in as {userEmail}
+          </span>
+        )}
         {/* {userEmail && (
           <button
             onClick={handleLogout}
