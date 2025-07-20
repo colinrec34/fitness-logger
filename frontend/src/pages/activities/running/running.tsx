@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState} from "react";
 import {
   MapContainer,
   TileLayer,
@@ -7,25 +7,19 @@ import {
   Marker,
   useMap,
 } from "react-leaflet";
-import type { LatLngExpression, LatLngBoundsExpression } from "leaflet";
+import type { LatLngBoundsExpression } from "leaflet";
+import polyline from "@mapbox/polyline";
+import { format } from "date-fns";
 
-const api = import.meta.env.VITE_API_URL || "http://localhost:8000";
+import { supabase } from "../../../api/supabaseClient";
 
-type RunApiResponse = {
-  id: number;
-  date: string;
-  name: string;
-  distance_miles: number;
-  elevation_gain_ft: number;
-  duration_minutes?: number;
-  route_json: string;
-  notes?: string;
-  weather?: string;
-};
+// For running activity
+const ACTIVITY_ID = "d3555da1-b932-42e2-9cbb-0908aaf1c73a";
 
-function formatDuration(durationMinutes?: number): string {
-  if (durationMinutes == null) return "Time N/A";
-  const totalSeconds = Math.round(durationMinutes * 60);
+import type { LogRow } from "./types";
+
+function formatDuration(durationSeconds: number): string {
+  const totalSeconds = Math.round(durationSeconds);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
@@ -39,17 +33,17 @@ function formatDuration(durationMinutes?: number): string {
   }
 }
 
-function formatPace(durationMinutes?: number, miles?: number): string {
-  if (durationMinutes == null || miles == null || miles === 0)
+function formatPace(durationSeconds?: number, distance?: number): string {
+  if (durationSeconds == null || distance == null || distance === 0)
     return "Pace N/A";
-  const totalSecondsPerMile = (durationMinutes / miles) * 60;
+  const totalSecondsPerMile = durationSeconds / distance;
   const minutes = Math.floor(totalSecondsPerMile / 60);
   const seconds = Math.round(totalSecondsPerMile % 60);
-  return `${minutes}:${seconds.toString().padStart(2, "0")} /mi`;
+  return `${minutes}:${seconds.toString().padStart(2, "0")} / mi`;
 }
 
 // Helper to auto-fit the map view to the route
-function FitBounds({ route }: { route: LatLngExpression[] }) {
+function FitBounds({ route }: { route: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
     if (route.length > 1) {
@@ -59,70 +53,101 @@ function FitBounds({ route }: { route: LatLngExpression[] }) {
   return null;
 }
 
-type RunLog = {
-  id: number;
-  date: string;
-  name: string;
-  distance_miles: number;
-  elevation_gain_ft: number;
-  duration_minutes?: number;
-  route: [number, number][]; // [lat, lon]
-  notes?: string;
-  weather?: string;
-};
-
 export default function Run() {
-  const [runs, setRuns] = useState<RunLog[]>([]);
+  const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(false);
-  
 
   useEffect(() => {
-    const importAndFetch = async () => {
+    async function fetchAllLogs() {
       setLoading(true);
-      try {
-        // First import from Strava
-        await fetch(`${api}/import/runs`, { method: "POST" });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
 
-        // Then fetch updated logs
-        const res = await fetch(`${api}/logs/runs`);
-        const data = await res.json();
-        const formatted = data.map(
-          (run: RunApiResponse): RunLog => ({
-            ...run,
-            route: run.route_json ? JSON.parse(run.route_json) : [],
-          })
-        );
-
-        setRuns(formatted);
-      } catch (err) {
-        console.error("Failed to import or fetch runs:", err);
-      } finally {
-        setLoading(false);
+      if (!accessToken) {
+        console.warn("No session or access token found.");
+        return;
       }
-    };
 
-    importAndFetch();
+      // Strava edge function to update logs
+      const syncRes = await fetch(
+        "https://rcdkucjsapmykzkiodzu.supabase.co/functions/v1/strava-sync",
+        {
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!syncRes.ok) {
+        console.error("Strava sync failed:", await syncRes.text());
+      } else {
+        const syncResult = await syncRes.json();
+        console.log("Strava sync success:", syncResult);
+      }
+
+      const { data, error } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("activity_id", ACTIVITY_ID)
+        .order("datetime", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching logs:", error);
+        setLogs([]);
+      } else if (data) {
+        setLogs(data);
+      }
+      setLoading(false);
+    }
+    fetchAllLogs();
   }, []);
 
-  const totalRuns = runs.length;
-  const totalDistance = runs.reduce((sum, r) => sum + r.distance_miles, 0);
-  const totalElevation = runs.reduce((sum, r) => sum + r.elevation_gain_ft, 0);
+  // Start coordinates for summary map
+  const allStartCoords: [number, number][] = logs
+    .map((log) => {
+      const encoded = log.data.map?.summary_polyline;
+      if (!encoded) return null;
 
+      const coords = polyline.decode(encoded);
+      return coords.length > 0 ? coords[0] : null;
+    })
+    .filter(
+      (coord): coord is [number, number] =>
+        Array.isArray(coord) && coord.length === 2
+    );
+
+  // Data formatting functions
+  function metersToMiles(meters: number) {
+    return meters / 1609.34;
+  }
+
+  // STATISTICS
+  const totalRuns = logs.length;
+  const totalMiles = metersToMiles(
+    logs.reduce((sum, log) => sum + log.data.distance, 0)
+  );
+  const totalElevation = logs.reduce(
+    (sum, log) => sum + log.data.total_elevation_gain,
+    0
+  );
+
+  const now = new Date();
   const oneYearAgo = new Date();
-  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-  const lastYearRuns = runs.filter((r) => new Date(r.date) > oneYearAgo);
-  const lastYearDistance = lastYearRuns.reduce(
-    (sum, r) => sum + r.distance_miles,
-    0
-  );
-  const lastYearElevation = lastYearRuns.reduce(
-    (sum, r) => sum + r.elevation_gain_ft,
-    0
+  oneYearAgo.setFullYear(now.getFullYear() - 1);
+
+  const lastYearRuns = logs.filter(
+    (log) => new Date(log.datetime) >= oneYearAgo
   );
 
-  const allStartCoords = runs
-    .map((r) => r.route?.[0])
-    .filter((pt): pt is [number, number] => Array.isArray(pt));
+  const lastYearMiles = metersToMiles(
+    lastYearRuns.reduce((sum, log) => sum + log.data.distance, 0)
+  );
+
+  const lastYearElevation = lastYearRuns.reduce(
+    (sum, log) => sum + log.data.total_elevation_gain,
+    0
+  );
 
   return (
     <div className="p-6">
@@ -133,69 +158,78 @@ export default function Run() {
         <div className="overflow-y-auto max-h-[calc(100vh-150px)] pr-2 space-y-6 scroll-hide">
           {loading ? (
             <p className="text-gray-400 italic">Loading runs...</p>
-          ) : runs.length === 0 ? (
+          ) : logs.length === 0 ? (
             <p className="text-gray-400 italic">No runs found.</p>
           ) : (
-            runs.map((run) => (
-              <div
-                key={run.id}
-                className="bg-slate-800 rounded-xl p-4 shadow-md flex flex-col"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-xl font-semibold">
-                      {run.name} — {run.date}
-                    </h2>
-                    <p className="text-sm text-gray-300">
-                      {run.distance_miles.toFixed(2)} mi ·{" "}
-                      {run.elevation_gain_ft.toFixed(0)} ft ·{" "}
-                      {formatDuration(run.duration_minutes)} ·{" "}
-                      {formatPace(run.duration_minutes, run.distance_miles)}
-                    </p>
-                    {run.notes && (
-                      <p className="mt-2 italic text-gray-400">{run.notes}</p>
-                    )}
+            logs
+              .slice() // copy the array
+              .sort(
+                (a, b) =>
+                  new Date(b.datetime).getTime() -
+                  new Date(a.datetime).getTime()
+              ) // newest first
+              .map((log) => (
+                <div
+                  key={log.id}
+                  className="bg-slate-800 rounded-xl p-4 shadow-md flex flex-col"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold">
+                        {log.data.name} —{" "}
+                        {format(new Date(log.datetime), "MMMM dd, yyyy")}
+                      </h2>
+                      <p className="text-sm text-gray-300">
+                        {metersToMiles(log.data.distance).toFixed(2)} mi ·{" "}
+                        {log.data.total_elevation_gain?.toFixed(0)} ft ·{" "}
+                        {formatDuration(log.data.elapsed_time || 0)} ·{" "}
+                        {formatPace(
+                          log.data.elapsed_time,
+                          metersToMiles(log.data.distance)
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  {run.weather && (
-                    <div className="ml-4 text-sm text-gray-300 text-right whitespace-nowrap">
-                      <p className="font-semibold">Weather</p>
-                      <p>{run.weather}</p>
+
+                  {log.data.map.summary_polyline?.length > 1 ? (
+                    <div className="w-full aspect-[4/3] relative mt-4 rounded overflow-hidden">
+                      <MapContainer
+                        center={
+                          polyline.decode(log.data.map.summary_polyline)[0]
+                        }
+                        zoom={15}
+                        scrollWheelZoom={false}
+                        style={{ height: "100%", width: "100%" }}
+                      >
+                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                        <Polyline
+                          positions={polyline.decode(
+                            log.data.map.summary_polyline
+                          )}
+                          color="#1e293b"
+                          weight={8}
+                        />
+                        <Polyline
+                          positions={polyline.decode(
+                            log.data.map.summary_polyline
+                          )}
+                          color="#32CD32"
+                          weight={4}
+                        >
+                          <Tooltip sticky>{log.data.name}</Tooltip>
+                        </Polyline>
+                        <FitBounds
+                          route={polyline.decode(log.data.map.summary_polyline)}
+                        />
+                      </MapContainer>
+                    </div>
+                  ) : (
+                    <div className="w-full aspect-[4/3] mt-4 flex items-center justify-center rounded bg-slate-700 text-gray-400 italic">
+                      Route data not available
                     </div>
                   )}
                 </div>
-
-                {run.route?.length > 1 ? (
-                  <div className="w-full aspect-[4/3] relative mt-4 rounded overflow-hidden">
-                    <MapContainer
-                      key={run.id}
-                      center={run.route[0] as LatLngExpression}
-                      zoom={15}
-                      scrollWheelZoom={false}
-                      style={{ height: "100%", width: "100%" }}
-                    >
-                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                      <Polyline
-                        positions={run.route}
-                        color="#1e293b"
-                        weight={8}
-                      />
-                      <Polyline
-                        positions={run.route}
-                        color="#32CD32"
-                        weight={4}
-                      >
-                        <Tooltip sticky>Route for {run.name}</Tooltip>
-                      </Polyline>
-                      <FitBounds route={run.route} />
-                    </MapContainer>
-                  </div>
-                ) : (
-                  <div className="w-full aspect-[4/3] mt-4 flex items-center justify-center rounded bg-slate-700 text-gray-400 italic">
-                    Route data not available
-                  </div>
-                )}
-              </div>
-            ))
+              ))
           )}
         </div>
 
@@ -209,9 +243,9 @@ export default function Run() {
                 <span className="font-semibold">{lastYearRuns.length}</span>
               </p>
               <p>
-                Total Distance:{" "}
+                Total Miles:{" "}
                 <span className="font-semibold">
-                  {lastYearDistance.toFixed(2)} mi
+                  {lastYearMiles.toFixed(2)} mi
                 </span>
               </p>
               <p>
@@ -226,9 +260,9 @@ export default function Run() {
                 Total Runs: <span className="font-semibold">{totalRuns}</span>
               </p>
               <p>
-                Total Distance:{" "}
+                Total Miles:{" "}
                 <span className="font-semibold">
-                  {totalDistance.toFixed(2)} mi
+                  {totalMiles.toFixed(2)} mi
                 </span>
               </p>
               <p>
@@ -252,26 +286,44 @@ export default function Run() {
                   style={{ height: "100%", width: "100%" }}
                 >
                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  {runs.map((run, i) =>
-                    run.route?.[0] ? (
-                      <Marker key={i} position={run.route[0]}>
-                        <Tooltip>
-                          <div className="text-sm">
-                            <p className="font-semibold">{run.name}</p>
-                            <p>{run.date}</p>
-                            <p>{run.distance_miles.toFixed(2)} mi</p>
-                            <p>{run.elevation_gain_ft.toFixed(0)} ft</p>
-                            <p>{formatDuration(run.duration_minutes)}</p>
-                            <p>
-                              {formatPace(
-                                run.duration_minutes,
-                                run.distance_miles
-                              )}
-                            </p>
-                          </div>
-                        </Tooltip>
-                      </Marker>
-                    ) : null
+                  {logs.map(
+                    (log, i) =>
+                      polyline.decode(log.data.map.summary_polyline)[0] && (
+                        <Marker
+                          key={i}
+                          position={
+                            polyline.decode(log.data.map.summary_polyline)[0]
+                          }
+                        >
+                          <Tooltip>
+                            <div className="text-sm">
+                              <p className="font-semibold">{log.data.name}</p>
+                              <p>
+                                {format(
+                                  new Date(log.datetime),
+                                  "MMMM dd, yyyy"
+                                )}
+                              </p>
+                              <p>
+                                {metersToMiles(log.data.distance)?.toFixed(2)}{" "}
+                                mi
+                              </p>
+                              <p>
+                                {log.data.total_elevation_gain?.toFixed(0)} ft
+                              </p>
+                              <p>
+                                {formatDuration(log.data.elapsed_time || 0)}
+                              </p>
+                              <p>
+                                {formatPace(
+                                  log.data.elapsed_time,
+                                  metersToMiles(log.data.distance)
+                                )}
+                              </p>
+                            </div>
+                          </Tooltip>
+                        </Marker>
+                      )
                   )}
                 </MapContainer>
               </div>
