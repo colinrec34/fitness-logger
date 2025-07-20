@@ -16,6 +16,10 @@ const ACTIVITY_ID = "a2fb0a80-f149-4761-a339-aeb282ba06a9";
 
 import type { LogRow } from "./types";
 
+function metersToMiles(meters: number) {
+    return meters / 1609.34;
+  }
+
 function formatDuration(durationSeconds: number): string {
   const totalSeconds = Math.round(durationSeconds);
   const hours = Math.floor(totalSeconds / 3600);
@@ -109,11 +113,6 @@ export default function Hike() {
       (coord): coord is [number, number] =>
         Array.isArray(coord) && coord.length === 2
     );
-
-  // Data formatting functions
-  function metersToMiles(meters: number) {
-    return meters / 1609.34;
-  }
 
   // STATISTICS
   const totalHikes = logs.length;
