@@ -51,9 +51,7 @@ export default function AuthPage() {
           setError("Login failed");
           return;
         }
-        if (!error && data.user) {
-          navigate("/");
-        }
+        navigate("/");
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
