@@ -11,6 +11,14 @@ interface Activity {
 
 export default function Navbar() {
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  async function fetchUser() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserEmail(user?.email ?? null);
+  }
 
   useEffect(() => {
     async function fetchActivities() {
@@ -33,7 +41,7 @@ export default function Navbar() {
 
       setActivities(sorted);
     }
-
+    fetchUser();
     fetchActivities();
   }, []);
 
@@ -52,6 +60,17 @@ export default function Navbar() {
             {activity.display_name}
           </Link>
         ))}
+      </div>
+      <div className="flex items-center gap-4">
+        {userEmail && <span className="text-sm text-slate-300">Signed in as {userEmail}</span>}
+        {/* {userEmail && (
+          <button
+            onClick={handleLogout}
+            className="bg-yellow-400 text-black px-3 py-1 rounded hover:bg-yellow-300 text-sm"
+          >
+            Logout
+          </button>
+        )} */}
       </div>
     </nav>
   );
