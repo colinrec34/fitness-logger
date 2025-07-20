@@ -46,19 +46,9 @@ function FitBounds({ route }: { route: [number, number][] }) {
   return null;
 }
 
-function SetBigMapRef({ setRef }: { setRef: (map: LeafletMap) => void }) {
-  const map = useMap();
-  useEffect(() => {
-    setRef(map);
-  }, [map, setRef]);
-  return null;
-}
-
 export default function Hike() {
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const bigMapRef = useRef<LeafletMap | null>(null);
 
   // Fetches logs
   useEffect(() => {
@@ -279,7 +269,6 @@ export default function Hike() {
                   scrollWheelZoom={true}
                   style={{ height: "100%", width: "100%" }}
                 >
-                  <SetBigMapRef setRef={(map) => (bigMapRef.current = map)} />
                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                   {logs.map(
                     (log, i) =>
