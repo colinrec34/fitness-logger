@@ -7,9 +7,10 @@ import {
   Marker,
   useMap,
 } from "react-leaflet";
-import type { LatLngExpression, LatLngBoundsExpression } from "leaflet";
+import type { LatLngBoundsExpression } from "leaflet";
 import type { Map as LeafletMap } from "leaflet";
 import polyline from "@mapbox/polyline";
+import { format } from "date-fns";
 
 import { supabase } from "../../../api/supabaseClient";
 const HIKING_ACTIVITY_ID = "a2fb0a80-f149-4761-a339-aeb282ba06a9";
@@ -29,13 +30,13 @@ function formatDuration(durationSeconds: number): string {
 function formatPace(durationSeconds?: number, distance?: number): string {
   if (durationSeconds == null || distance == null || distance === 0)
     return "Pace N/A";
-  const totalSecondsPerMile = (durationSeconds / distance);
+  const totalSecondsPerMile = durationSeconds / distance;
   const minutes = Math.floor(totalSecondsPerMile / 60);
   const seconds = Math.round(totalSecondsPerMile % 60);
   return `${minutes}:${seconds.toString().padStart(2, "0")} / mi`;
 }
 
-function FitBounds({ route }: { route: LatLngExpression[] }) {
+function FitBounds({ route }: { route: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
     if (route.length > 1) {
@@ -55,7 +56,6 @@ function SetBigMapRef({ setRef }: { setRef: (map: LeafletMap) => void }) {
 
 export default function Hike() {
   const [logs, setLogs] = useState<LogRow[]>([]);
-
   const [loading, setLoading] = useState(false);
 
   const bigMapRef = useRef<LeafletMap | null>(null);
@@ -107,16 +107,32 @@ export default function Hike() {
     fetchAllLogs();
   }, []);
 
+  // Start coordinates for summary map
+  const allStartCoords: [number, number][] = logs
+    .map((log) => {
+      const encoded = log.data.map?.summary_polyline;
+      if (!encoded) return null;
+
+      const coords = polyline.decode(encoded);
+      return coords.length > 0 ? coords[0] : null;
+    })
+    .filter(
+      (coord): coord is [number, number] =>
+        Array.isArray(coord) && coord.length === 2
+    );
+
   // Data formatting functions
-  function metersToMiles (meters: number) {
+  function metersToMiles(meters: number) {
     return meters / 1609.34;
   }
 
   // STATISTICS
   const totalHikes = logs.length;
-  const totalMiles = metersToMiles(logs.reduce((sum, log) => sum + log.data.distance, 0));
+  const totalMiles = metersToMiles(
+    logs.reduce((sum, log) => sum + log.data.distance, 0)
+  );
   const totalElevation = logs.reduce(
-    (sum, log) => sum + log.data.total_elevation_gain!,
+    (sum, log) => sum + log.data.total_elevation_gain,
     0
   );
 
@@ -128,25 +144,14 @@ export default function Hike() {
     return new Date(log.datetime) >= oneYearAgo;
   });
 
-  const lastYearMiles = metersToMiles(lastYearHikes.reduce(
-    (sum, log) => sum + (log.data.distance || 0),
-    0
-  ));
+  const lastYearMiles = metersToMiles(
+    lastYearHikes.reduce((sum, log) => sum + (log.data.distance || 0), 0)
+  );
 
   const lastYearElevation = lastYearHikes.reduce(
     (sum, log) => sum + (log.data.total_elevation_gain || 0),
     0
   );
-
-  const allStartCoords: LatLngExpression[] = logs
-    .map((log) => {
-      const encoded = log.data.map?.summary_polyline;
-      if (!encoded) return null;
-
-      const coords = polyline.decode(encoded);
-      return coords[0];
-    })
-    .filter((coord): coord is LatLngExpression => Array.isArray(coord));
 
   return (
     <div className="p-6">
@@ -168,13 +173,16 @@ export default function Hike() {
                 className="bg-slate-800 rounded-xl p-4 shadow-md flex flex-col"
               >
                 <h2 className="text-xl font-semibold">
-                  {log.data.name} — {log.datetime}
+                  {log.data.name} — {format(new Date(log.datetime), "MMMM dd, yyyy")}
                 </h2>
                 <p className="text-sm text-gray-300">
                   {metersToMiles(log.data.distance).toFixed(2)} mi ·{" "}
                   {log.data.total_elevation_gain?.toFixed(0)} ft ·{" "}
                   {formatDuration(log.data.elapsed_time || 0)} ·{" "}
-                  {formatPace(log.data.elapsed_time, metersToMiles(log.data.distance))}
+                  {formatPace(
+                    log.data.elapsed_time,
+                    metersToMiles(log.data.distance)
+                  )}
                 </p>
                 {/* {log.data.notes && (
                   <p className="mt-2 italic text-gray-400">{log.data.notes}</p>
@@ -220,9 +228,7 @@ export default function Hike() {
         </div>
 
         {/* Stats + map column */}
-        <div
-          className={`lg:block space-y-6 text-gray-200`}
-        >
+        <div className={`lg:block space-y-6 text-gray-200`}>
           {totalHikes > 0 && (
             <div className="bg-slate-800 rounded-xl p-4 shadow-md">
               <h2 className="text-xl font-semibold mb-2">Last 12 Months</h2>
@@ -287,8 +293,11 @@ export default function Hike() {
                           <Tooltip>
                             <div className="text-sm">
                               <p className="font-semibold">{log.data.name}</p>
-                              <p>{log.datetime}</p>
-                              <p>{metersToMiles(log.data.distance)?.toFixed(2)} mi</p>
+                              <p>{format(new Date(log.datetime), "MMMM dd, yyyy")}</p>
+                              <p>
+                                {metersToMiles(log.data.distance)?.toFixed(2)}{" "}
+                                mi
+                              </p>
                               <p>
                                 {log.data.total_elevation_gain?.toFixed(0)} ft
                               </p>
