@@ -1,4 +1,3 @@
-// src/components/CardGrid.tsx
 export default function CardGrid({
   children,
   cols = 'grid-cols-1',
