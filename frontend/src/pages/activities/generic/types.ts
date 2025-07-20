@@ -1,9 +1,6 @@
-export interface SurfLogData {
+export interface GenericLogData {
   location_id: string;
-  board?: string;
-  height?: string;
   duration?: number;
-  waves?: number;
   notes?: string;
 };
 
@@ -23,7 +20,7 @@ export interface LogRow {
   activity_id: string;
   datetime: string;
   location_id?: string;
-  data: SurfLogData;
+  data: GenericLogData;
   created_at?: string;
   updated_at?: string;
 }

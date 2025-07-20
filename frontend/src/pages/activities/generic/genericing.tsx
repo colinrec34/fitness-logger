@@ -9,11 +9,11 @@ import {
   useMap,
 } from "react-leaflet";
 import { supabase } from "../../../api/supabaseClient";
-const ACTIVITY_ID = "0ddcfe52-2da0-47b6-a44a-e282f54ac21d";
+const ACTIVITY_ID = "c9585467-e875-4b95-91fe-4263493854b0";
 
 import type { LocationRow, LogRow } from "./types";
 
-export default function Surf() {
+export default function Genericing() {
   const [showAddLocation, setShowAddLocation] = useState(false);
 
   // Datetime initialization to current time and variables
@@ -40,10 +40,7 @@ export default function Surf() {
 
   const [form, setForm] = useState({
     location: "",
-    board: "",
-    height: "",
     duration: 0,
-    waves: 0,
     notes: "",
   });
 
@@ -156,20 +153,14 @@ export default function Surf() {
       if (data) {
         setForm({
           location: data.location || "",
-          board: data.board || "",
-          height: data.height || "",
           duration: data.duration || 0,
-          waves: data.waves || 0,
           notes: data.notes || "",
         });
       } else {
         // If no log exists, reset the form
         setForm({
           location: "",
-          board: "",
-          height: "",
           duration: 0,
-          waves: 0,
           notes: "",
         });
       }
@@ -208,10 +199,7 @@ export default function Surf() {
         datetime: new Date(datetime).toISOString(),
         location_id: locMatch.id,
         data: {
-          board: form.board,
-          height: form.height,
           duration: form.duration,
-          waves: form.waves,
           notes: form.notes,
         },
       };
@@ -223,7 +211,7 @@ export default function Surf() {
 
       if (error) throw error;
 
-      alert("Surfing session logged!");
+      alert("Genericing session logged!");
 
       // Refresh logs for charts
       const { data: updatedLogs, error: fetchError } = await supabase
@@ -273,7 +261,7 @@ export default function Surf() {
       grouped.get(location.id)!.logs.push({
         id: log.id,
         date,
-        waves: log.data?.waves ?? 0,
+        waves: log.data.duration ?? 0,
       });
     }
 
@@ -284,7 +272,6 @@ export default function Surf() {
 
   // Statistics
   const totalSessions = logs.length;
-  const totalWaves = logs.reduce((sum, log) => sum + (log.data?.waves ?? 0), 0);
   const totalDuration = logs.reduce(
     (sum, log) => sum + (log.data?.duration ?? 0),
     0
@@ -294,7 +281,7 @@ export default function Surf() {
     <div className="flex flex-col md:flex-row gap-8 p-6">
       {/* Left Column */}
       <div className="flex-1 space-y-6">
-        <h1 className="text-3xl font-bold">Log a Surf Session</h1>
+        <h1 className="text-3xl font-bold">Log a Genericing Session</h1>
         <form
           onSubmit={handleSubmit}
           className="space-y-4 bg-slate-800 p-6 rounded-xl shadow-md"
@@ -366,24 +353,6 @@ export default function Surf() {
           </div>
 
           <div>
-            <label className="block mb-1">Board</label>
-            <input
-              className="w-full p-2 rounded bg-slate-700 text-white"
-              value={form.board}
-              onChange={(e) => setForm({ ...form, board: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label className="block mb-1">Wave Height (e.g. 3–4 ft)</label>
-            <input
-              className="w-full p-2 rounded bg-slate-700 text-white"
-              value={form.height}
-              onChange={(e) => setForm({ ...form, height: e.target.value })}
-            />
-          </div>
-
-          <div>
             <label className="block mb-1">Duration (minutes)</label>
             <input
               type="number"
@@ -399,21 +368,6 @@ export default function Surf() {
           </div>
 
           <div>
-            <label className="block mb-1">Waves Caught</label>
-            <input
-              type="number"
-              className="w-full p-2 rounded bg-slate-700 text-white"
-              value={form.waves}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  waves: parseInt(e.target.value || "0"),
-                })
-              }
-            />
-          </div>
-
-          <div>
             <label className="block mb-1">Notes</label>
             <textarea
               className="w-full p-2 rounded bg-slate-700 text-white"
@@ -422,10 +376,18 @@ export default function Surf() {
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
           </div>
+          <button
+            type="submit"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded w-full"
+          >
+            Save Session
+          </button>
         </form>
 
         <div className="bg-slate-800 rounded-xl p-4 max-h-[400px] overflow-y-auto shadow-md">
-          <h2 className="text-xl font-semibold mb-2">Surf Session History</h2>
+          <h2 className="text-xl font-semibold mb-2">
+            Genericing Session History
+          </h2>
           {logs.length === 0 ? (
             <p className="italic text-gray-400">No sessions logged yet.</p>
           ) : (
@@ -441,10 +403,7 @@ export default function Surf() {
                         "Unknown location"}
                     </div>
                     <div className="text-sm text-gray-300">
-                      {log.data.duration} minutes · {log.data.waves} waves
-                      caught
-                      {log.data.height && ` · ${log.data.height}`} ·{" "}
-                      {log.data.board}
+                      {log.data.duration} minutes
                     </div>
                     {log.data.notes && (
                       <div className="text-sm text-gray-400 mt-1 italic">
@@ -460,11 +419,10 @@ export default function Surf() {
 
       {/* Right Column */}
       <div className="md:w-1/2 space-y-6">
-        <h1 className="text-3xl font-bold">Surf Statistics</h1>
+        <h1 className="text-3xl font-bold">Genericing Statistics</h1>
         <div className="bg-slate-800 p-6 rounded-xl shadow-md">
           <ul className="space-y-1">
             <li>Total sessions: {totalSessions}</li>
-            <li>Total waves caught: {totalWaves}</li>
             <li>Total hours: {(totalDuration / 60).toFixed(1)}</li>
           </ul>
         </div>
