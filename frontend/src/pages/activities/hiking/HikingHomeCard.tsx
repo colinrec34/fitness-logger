@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Polyline,
-  Tooltip,
-  useMap,
-} from "react-leaflet";
+import {MapContainer, TileLayer, Polyline, Tooltip, useMap } from "react-leaflet";
 import polyline from "@mapbox/polyline";
 import type { LatLngBoundsExpression } from "leaflet";
 import { format, formatDistanceToNow } from "date-fns";
