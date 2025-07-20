@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { TooltipProps } from "recharts";
+import { format } from "date-fns";
 
 import { supabase } from "../../../api/supabaseClient";
 
@@ -501,8 +502,50 @@ export default function Lifts() {
             Save Log
           </button>
         </form>
+        {/* Session History */}
+        <div className="bg-slate-800 rounded-xl p-4 max-h-[800px] overflow-y-auto shadow-md">
+          <h2 className="text-xl font-semibold mb-2">Lifting Session History</h2>
+          {logs.length === 0 ? (
+            <p className="italic text-gray-400">No sessions logged yet.</p>
+          ) : (
+            <ul className="space-y-4">
+              {logs
+                .slice()
+                .sort((a, b) => b.datetime.localeCompare(a.datetime)) // Reverse chronological
+                .map((log) => (
+                  <li key={log.id} className="border-b border-slate-600 pb-2">
+                    <div className="font-semibold text-white">
+                      {format(new Date(log.datetime), "yyyy-MM-dd")}
+                    </div>
+                    <div className="text-sm text-gray-300">
+                      {[
+                        (log.data.squat?.work?.[0]?.weight ?? 0) > 0 &&
+                          `Squat: ${log.data.squat?.work[0].weight} lbs`,
+                        (log.data.bench?.work?.[0]?.weight ?? 0) > 0 &&
+                          `Bench Press: ${log.data.bench?.work[0].weight} lbs`,
+                        (log.data.deadlift?.work?.[0]?.weight ?? 0) > 0 &&
+                          `Deadlift: ${log.data.deadlift?.work[0].weight} lbs`,
+                        (log.data.pullups?.[0]?.reps ?? 0) > 0 &&
+                          `Pullups: ${log.data.pullups?.[0].reps} reps/set`,
+                        (log.data.overhead?.work?.[0]?.weight ?? 0) > 0 &&
+                          `Overhead: ${log.data.overhead?.work[0].weight} lbs`,
+                        (log.data.clean?.work?.[0]?.weight ?? 0) > 0 &&
+                          `Power Clean: ${log.data.clean?.work[0].weight} lbs`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </div>
+                    {log.data.notes && (
+                      <div className="text-sm text-gray-400 mt-1 italic">
+                        {log.data.notes}
+                      </div>
+                    )}
+                  </li>
+                ))}
+            </ul>
+          )}
+        </div>
       </div>
-
       {/* RIGHT COLUMN: Charts */}
       <div className="space-y-8">
         <h1 className="text-3xl font-bold mb-6">Performance Charts</h1>
