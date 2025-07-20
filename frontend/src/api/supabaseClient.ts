@@ -32,6 +32,8 @@ export async function signIn(email: string, password: string) {
   const access_token = data.session?.access_token;
   const refresh_token = data.session?.refresh_token;
 
+  console.log("Tokens:", { access_token, refresh_token }); // 👈 ADD THIS
+
   if (access_token && refresh_token) {
     await fetch('https://rcdkucjsapmykzkiodzu.supabase.co/functions/v1/set-auth-cookie', {
       method: 'POST',
@@ -45,6 +47,7 @@ export async function signIn(email: string, password: string) {
 
   return data.user;
 }
+
 
 
 export async function signUp(email: string, password: string) {
