@@ -1,6 +1,6 @@
 import WeightProgress from "./activities/weight/WeightHomeCard";
 import LiftProgress from "./activities/lifting/LiftingHomeCard";
-import HikeProgress from "./activities/hiking/HikeHomeCard";
+import HikeProgress from "./activities/hiking/HikingHomeCard";
 import RunProgress from "./activities/running/RunningHomeCard";
 import SurfProgress from "./activities/surfing/SurfingHomeCard";
 import SnorkelingProgress from "./activities/snorkeling/SnorkelingHomeCard";

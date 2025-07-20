@@ -49,7 +49,7 @@ function FitBounds({ route }: { route: [number, number][] }) {
   return null;
 }
 
-export default function HikeProgress() {
+export default function HikingHomeCard() {
   const [userId, setUserId] = useState<string | null>(null);
   const [latest, setLatest] = useState<LogRow>();
   const [loading, setLoading] = useState(true);
