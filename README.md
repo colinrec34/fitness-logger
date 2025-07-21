@@ -67,16 +67,16 @@ This was designed based on my personal logging ambitions, but can be easily exte
 ## 📸 Screenshots
 
 <p align="center">
-  <img src="images/home.png" width="45%" />
-  <img src="images/outdoor.png" width="45%" />
+  <img src="images/home.png" />
+  <img src="images/outdoor.png" />
 </p>
 <p align="center">
-  <img src="images/lifting.png" width="45%" />
-  <img src="images/surfing.png" width="45%" />
+  <img src="images/lifting.png" />
+  <img src="images/surfing.png" />
 </p>
 <p align="center">
-  <img src="images/running.png"width="45%">
-  <img src="images/hiking.png" width="45%" />
+  <img src="images/running.png" />
+  <img src="images/hiking.png"  />
 </p>
 
 
