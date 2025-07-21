@@ -1,4 +1,3 @@
-// src/components/ProtectedRoute.tsx
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
@@ -29,7 +28,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (loading) return null; // or a loading spinner
+  if (loading) return null;
 
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }

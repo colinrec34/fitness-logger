@@ -5,6 +5,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import Card from "../../../components/Card"
 
 import { supabase } from "../../../api/supabaseClient";
+
 // Put the activity ID from the activites table here
 const ACTIVITY_ID = "";
 
