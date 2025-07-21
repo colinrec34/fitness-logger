@@ -36,7 +36,7 @@ export default function Home() {
   useEffect(() => {
     async function fetchActiveActivities() {
       if (!userId) return;
-      
+
       const { data, error } = await supabase
         .from("activities")
         .select("slug, is_active")
@@ -57,28 +57,42 @@ export default function Home() {
     fetchActiveActivities();
   }, [userId]);
 
+  const hasProgress =
+    active.weight || active.lifting;
+
+  const hasOutdoor =
+    active.surfing || active.hiking || active.running || active.snorkeling;
+
   return (
     <div className="px-4 sm:px-6 lg:px-8 max-w-screen-xl mx-auto">
       <section className="mb-12">
         <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-white">
           📈 Your Progress
         </h2>
-        <CardGrid cols="grid-cols-1 md:grid-cols-2 gap-4">
-          {active.weight && <WeightProgress />}
-          {active.lifting && <LiftProgress />}
-        </CardGrid>
+        {hasProgress ? (
+          <CardGrid cols="grid-cols-1 md:grid-cols-2 gap-4">
+            {active.weight && <WeightProgress />}
+            {active.lifting && <LiftProgress />}
+          </CardGrid>
+        ) : (
+          <p className="text-gray-400">No progress yet.</p>
+        )}
       </section>
 
       <section className="mb-20">
         <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-white">
           🌲 Latest Outdoor Activity
         </h2>
-        <CardGrid cols="grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {active.surfing && <SurfProgress />}
-          {active.hiking && <HikeProgress />}
-          {active.running && <RunProgress />}
-          {active.snorkeling && <SnorkelingProgress />}
-        </CardGrid>
+        {hasOutdoor ? (
+          <CardGrid cols="grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {active.surfing && <SurfProgress />}
+            {active.hiking && <HikeProgress />}
+            {active.running && <RunProgress />}
+            {active.snorkeling && <SnorkelingProgress />}
+          </CardGrid>
+        ) : (
+          <p className="text-gray-400">No outdoor activities yet.</p>
+        )}
       </section>
     </div>
   );
