@@ -40,6 +40,8 @@ export default function Weight() {
 
   useEffect(() => {
     async function fetchAllLogs() {
+      if (!userId) return;
+      
       const { data, error } = await supabase
         .from("logs")
         .select("*")

@@ -40,6 +40,8 @@ export default function SnorkelingHomeCard() {
     if (!userId) return;
 
     const fetchLatestLog = async () => {
+      if (!userId) return;
+      
       const { data: log, error: logError } = await supabase
         .from("logs")
         .select("*")

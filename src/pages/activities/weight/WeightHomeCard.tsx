@@ -37,6 +37,7 @@ export default function WeightProgress() {
   //Getting log data
   useEffect(() => {
     async function fetchAllLogs() {
+      if (!userId) return;
       setLoading(true);
       const { data, error } = await supabase
         .from("logs")

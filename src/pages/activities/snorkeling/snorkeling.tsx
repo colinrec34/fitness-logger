@@ -102,6 +102,8 @@ export default function Snorkeling() {
   // Fetches locations
   useEffect(() => {
     async function fetchAllLocations() {
+      if (!userId) return;
+
       const { data, error } = await supabase
         .from("locations")
         .select("*")
@@ -120,6 +122,8 @@ export default function Snorkeling() {
   // Fetches logs
   useEffect(() => {
     async function fetchAllLogs() {
+      if (!userId) return;
+
       const { data, error } = await supabase
         .from("logs")
         .select("*")

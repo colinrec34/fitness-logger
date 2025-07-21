@@ -50,6 +50,8 @@ export default function LiftProgress() {
   // Fetching all logs
   useEffect(() => {
     async function fetchAllLogs() {
+      if (!userId) return;
+      
       setLoading(true);
       const { data, error } = await supabase
         .from("logs")

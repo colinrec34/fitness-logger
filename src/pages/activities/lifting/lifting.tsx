@@ -85,6 +85,7 @@ export default function Lifts() {
   // Fetch all logs for this user/activity (for charts, history)
   useEffect(() => {
     async function fetchAllLogs() {
+      if (!userId) return;
       const { data, error } = await supabase
         .from("logs")
         .select("*")

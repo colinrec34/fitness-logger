@@ -32,6 +32,7 @@ export default function Genericing() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   });
 
+  const [userId, setUserId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [locations, setLocations] = useState<LocationRow[]>([]);
   const [newLocationName, setNewLocationName] = useState("");
@@ -75,6 +76,7 @@ export default function Genericing() {
       const { data } = await supabase
         .from("locations")
         .select("*")
+        .eq("user_id", userId)
         .eq("activity_id", ACTIVITY_ID);
       if (data) setLocations(data);
     } catch (err) {
@@ -83,12 +85,28 @@ export default function Genericing() {
     }
   }
 
+  // Getting the userId
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Failed to get user:", error.message);
+        return;
+      }
+      setUserId(data?.user?.id || null);
+    };
+
+    getUser();
+  }, []);
+
   // Fetches locations
   useEffect(() => {
     async function fetchAllLocations() {
+      if (!userId) return;
       const { data, error } = await supabase
         .from("locations")
         .select("*")
+        .eq("user_id", userId)
         .eq("activity_id", ACTIVITY_ID);
       if (error) {
         console.error("Error fetching locations:", error);
@@ -98,14 +116,16 @@ export default function Genericing() {
       }
     }
     fetchAllLocations();
-  }, []);
+  }, [userId]);
 
   // Fetches logs
   useEffect(() => {
     async function fetchAllLogs() {
+      if (!userId) return;
       const { data, error } = await supabase
         .from("logs")
         .select("*")
+        .eq("user_id", userId)
         .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
@@ -117,7 +137,7 @@ export default function Genericing() {
       }
     }
     fetchAllLogs();
-  }, []);
+  }, [userId]);
 
   // Fetch single log for selected date and populate form
   useEffect(() => {
@@ -139,6 +159,7 @@ export default function Genericing() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
+        .eq("user_id", userId)
         .eq("activity_id", ACTIVITY_ID)
         .gte("datetime", startISO)
         .lte("datetime", endISO)
@@ -167,7 +188,7 @@ export default function Genericing() {
     }
 
     fetchLogForDate();
-  }, [datetime]);
+  }, [datetime, userId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,6 +208,7 @@ export default function Genericing() {
       const { data: locMatch, error: locError } = await supabase
         .from("locations")
         .select("id")
+        .eq("user_id", userId)
         .eq("activity_id", ACTIVITY_ID)
         .eq("name", form.location)
         .single();
@@ -217,6 +239,7 @@ export default function Genericing() {
       const { data: updatedLogs, error: fetchError } = await supabase
         .from("logs")
         .select("*")
+        .eq("user_id", userId)
         .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 

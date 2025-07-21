@@ -75,6 +75,7 @@ export default function Run() {
   // Fetching logs
   useEffect(() => {
     async function fetchAllLogs() {
+      if (!userId) return;
       setLoading(true);
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
