@@ -74,7 +74,7 @@ This was designed based on my personal logging ambitions, but can be easily exte
   <img src="images/lifting.png" width="40%" />
   <img src="images/surfing.png" width="40%" />
 </p>
-<p>
+<p align="center">
   <img src="images/running.png"width="40%">
   <img src="images/hiking.png" width="40%" />
 </p>
