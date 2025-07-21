@@ -76,11 +76,19 @@ This was designed based on my personal logging ambitions, but can be easily exte
 </p>
 <p align="center">
   <img src="images/lifting.png" />
+  Lifting Activity Page
+</p>
+<p align="center">
   <img src="images/surfing.png" />
+  Surfing Activity Page
 </p>
 <p align="center">
   <img src="images/running.png" />
+  Running Activity Page
+</p>
+<p align="center">
   <img src="images/hiking.png"  />
+  Hiking Activity Page
 </p>
 
 
