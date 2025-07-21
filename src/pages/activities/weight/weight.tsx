@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import WeightProgress from "./WeightHomeCard";
 
 import { supabase } from "../../../api/supabaseClient";
-import type { LogRow } from "./types"
+import type { LogRow } from "./types";
 const ACTIVITY_ID = "3bacbc7e-4e70-435a-8927-ccc7ff1568b7";
 
 export default function Weight() {
@@ -21,13 +21,29 @@ export default function Weight() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   });
 
+  const [userId, setUserId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogRow[]>([]);
+
+  // Getting the userId
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Failed to get user:", error.message);
+        return;
+      }
+      setUserId(data?.user?.id || null);
+    };
+
+    getUser();
+  }, []);
 
   useEffect(() => {
     async function fetchAllLogs() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
+        .eq("user_id", userId)
         .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
@@ -39,7 +55,7 @@ export default function Weight() {
       }
     }
     fetchAllLogs();
-  }, []);
+  }, [userId]);
 
   const [weight, setWeight] = useState<number | "">("");
 
@@ -100,7 +116,11 @@ export default function Weight() {
               <input
                 type="number"
                 value={weight}
-                onChange={(e) => setWeight(e.target.value === "" ? "" : parseFloat(e.target.value))}
+                onChange={(e) =>
+                  setWeight(
+                    e.target.value === "" ? "" : parseFloat(e.target.value)
+                  )
+                }
                 className="w-full border px-3 py-2 rounded"
                 step="0.1"
                 required

@@ -16,8 +16,23 @@ const WEIGHT_ACTIVITY_ID = "3bacbc7e-4e70-435a-8927-ccc7ff1568b7";
 import type { LogRow } from "./types";
 
 export default function WeightProgress() {
+  const [userId, setUserId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Getting the userId
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Failed to get user:", error.message);
+        return;
+      }
+      setUserId(data?.user?.id || null);
+    };
+
+    getUser();
+  }, []);
 
   //Getting log data
   useEffect(() => {
@@ -26,6 +41,7 @@ export default function WeightProgress() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
+        .eq("user_id", userId)
         .eq("activity_id", WEIGHT_ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
@@ -38,7 +54,7 @@ export default function WeightProgress() {
       setLoading(false);
     }
     fetchAllLogs();
-  }, []);
+  }, [userId]);
 
   // Loading State
   if (loading) {

@@ -60,6 +60,7 @@ export default function SnorkelingHomeCard() {
         const { data: location, error: locationError } = await supabase
           .from("locations")
           .select("*")
+          .eq("user_id", userId)
           .eq("id", log.location_id)
           .single();
 
