@@ -69,10 +69,13 @@ This was designed based on my personal logging ambitions, but can be easily exte
 <p align="center">
   <img src="images/home.png" width="40%" />
   <img src="images/outdoor.png" width="40%" />
-  <img src="images/lifting.png" width="40%" />
 </p>
 <p align="center">
+  <img src="images/lifting.png" width="40%" />
   <img src="images/surfing.png" width="40%" />
+</p>
+<p>
+  <img src="images/running.png">
   <img src="images/hiking.png" width="40%" />
 </p>
 
