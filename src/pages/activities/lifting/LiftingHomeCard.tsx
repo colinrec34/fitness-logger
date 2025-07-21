@@ -19,6 +19,7 @@ function estimateSessionsToGoal(
 }
 
 export default function LiftProgress() {
+  const [userId, setUserId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,6 +33,20 @@ export default function LiftProgress() {
     clean: 185,
   });
 
+  // Getting the userId
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Failed to get user:", error.message);
+        return;
+      }
+      setUserId(data?.user?.id || null);
+    };
+
+    getUser();
+  }, []);
+
   // Fetching all logs
   useEffect(() => {
     async function fetchAllLogs() {
@@ -39,6 +54,7 @@ export default function LiftProgress() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
+        .eq("user_id", userId)
         .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
@@ -51,7 +67,7 @@ export default function LiftProgress() {
       setLoading(false);
     }
     fetchAllLogs();
-  }, []);
+  }, [userId]);
 
   // Loading state
   if (loading) {
