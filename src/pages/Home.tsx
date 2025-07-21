@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { supabase } from "../api/supabaseClient";
+
 import WeightProgress from "./activities/weight/WeightHomeCard";
 import LiftProgress from "./activities/lifting/LiftingHomeCard";
 import HikeProgress from "./activities/hiking/HikingHomeCard";
@@ -7,7 +10,53 @@ import SnorkelingProgress from "./activities/snorkeling/SnorkelingHomeCard";
 
 import CardGrid from "../components/CardGrid";
 
+type ActivityFlags = {
+  [key: string]: boolean;
+};
+
 export default function Home() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [active, setActive] = useState<ActivityFlags>({});
+
+  // Getting the userId
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Failed to get user:", error.message);
+        return;
+      }
+      setUserId(data?.user?.id || null);
+    };
+
+    getUser();
+  }, []);
+
+  // Getting activities
+  useEffect(() => {
+    async function fetchActiveActivities() {
+      if (!userId) return;
+      
+      const { data, error } = await supabase
+        .from("activities")
+        .select("slug, is_active")
+        .eq("user_id", userId);
+
+      if (error) {
+        console.error("Failed to fetch activities:", error);
+        return;
+      }
+
+      const activeFlags: ActivityFlags = {};
+      data.forEach((activity) => {
+        activeFlags[activity.slug] = activity.is_active;
+      });
+      setActive(activeFlags);
+    }
+
+    fetchActiveActivities();
+  }, [userId]);
+
   return (
     <div className="px-4 sm:px-6 lg:px-8 max-w-screen-xl mx-auto">
       <section className="mb-12">
@@ -15,8 +64,8 @@ export default function Home() {
           📈 Your Progress
         </h2>
         <CardGrid cols="grid-cols-1 md:grid-cols-2 gap-4">
-          <WeightProgress />
-          <LiftProgress />
+          {active.weight && <WeightProgress />}
+          {active.lifting && <LiftProgress />}
         </CardGrid>
       </section>
 
@@ -25,10 +74,10 @@ export default function Home() {
           🌲 Latest Outdoor Activity
         </h2>
         <CardGrid cols="grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <SurfProgress />
-          <HikeProgress />
-          <RunProgress />
-          <SnorkelingProgress />
+          {active.surfing && <SurfProgress />}
+          {active.hiking && <HikeProgress />}
+          {active.running && <RunProgress />}
+          {active.snorkeling && <SnorkelingProgress />}
         </CardGrid>
       </section>
     </div>
