@@ -75,7 +75,7 @@ export default function Home() {
             {active.lifting && <LiftProgress />}
           </CardGrid>
         ) : (
-          <p className="text-gray-400">No progress yet.</p>
+          <p className="text-gray-400">No progress activities yet.</p>
         )}
       </section>
 
