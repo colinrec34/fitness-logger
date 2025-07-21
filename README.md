@@ -64,5 +64,18 @@ src/
 ## 📌 Notes
 This was designed based on my personal logging ambitions, but can be easily extended to other activities and layouts. Generic templates are included in the pages/activities directory for quick addition of new activities. In the future, these templates will generate all the activities themselves, so no pages are hardcoded with custom ```.tsx``` files.
 
+## 📸 Screenshots
+
+<p align="center">
+  <img src="images/home.png" width="40%" />
+  <img src="images/outdoor.png" width="40%" />
+  <img src="images/lifting.png" width="40%" />
+</p>
+<p align="center">
+  <img src="images/surfing.png" width="40%" />
+  <img src="images/hiking.png" width="40%" />
+</p>
+
+
 ## 📄 License
 MIT © Colin Recker
