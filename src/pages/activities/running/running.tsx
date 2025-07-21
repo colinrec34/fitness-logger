@@ -54,9 +54,25 @@ function FitBounds({ route }: { route: [number, number][] }) {
 }
 
 export default function Run() {
+  const [userId, setUserId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Getting the userId
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Failed to get user:", error.message);
+        return;
+      }
+      setUserId(data?.user?.id || null);
+    };
+
+    getUser();
+  }, []);
+
+  // Fetching logs
   useEffect(() => {
     async function fetchAllLogs() {
       setLoading(true);
@@ -89,6 +105,7 @@ export default function Run() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
+        .eq("user_id", userId)
         .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
@@ -101,7 +118,7 @@ export default function Run() {
       setLoading(false);
     }
     fetchAllLogs();
-  }, []);
+  }, [userId]);
 
   // Start coordinates for summary map
   const allStartCoords: [number, number][] = logs
