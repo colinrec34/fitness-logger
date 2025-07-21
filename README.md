@@ -68,7 +68,11 @@ This was designed based on my personal logging ambitions, but can be easily exte
 
 <p align="center">
   <img src="images/home.png" />
+  Home Page
+</p>
+<p align="center">
   <img src="images/outdoor.png" />
+  Latest Outdoor Activities
 </p>
 <p align="center">
   <img src="images/lifting.png" />
