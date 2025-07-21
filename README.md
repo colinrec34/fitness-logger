@@ -2,7 +2,7 @@
 
 A lightweight and responsive fitness logging app that tracks my weight and lifting progress, as well as my outdoor activity sessions (surfing, hiking, running, and snorkeling). Built with **React**, **Supabase**, and **Tailwind CSS**, it features session history, statistics, and location-based visualization via interactive maps.
 
-It also integrates with the **Strava API** to automatically sync and display activities logged on Strava, making it easy to combine personal and tracked data in one place.
+It also integrates with the **Strava API** to automatically sync and display activities logged on Strava, making it easy to combine manual and Strava logged data in one place.
 
 ## Features
 
@@ -58,7 +58,8 @@ src/
 
 ## 🔮 Planned Updates
 - Activity editing and deletion
-- Admin dashboard for managing activities (including Strava-connected types) with no hardcoded pages
+- Profile dashboard for managing activities (including Strava-connected types);
+- Generalize activities for easy management and no hardcoded pages
 
 ## 📌 Notes
 This was designed based on my personal logging ambitions, but can be easily extended to other activities and layouts. Generic templates are included in the pages/activities directory for quick addition of new activities. In the future, these templates will generate all the activities themselves, so no pages are hardcoded with custom ```.tsx``` files.
