@@ -11,7 +11,7 @@ import {
 import Card from "../../../components/Card";
 
 import { supabase } from "../../../api/supabaseClient";
-const WEIGHT_ACTIVITY_ID = "3bacbc7e-4e70-435a-8927-ccc7ff1568b7";
+const ACTIVITY_ID = "3bacbc7e-4e70-435a-8927-ccc7ff1568b7";
 
 import type { LogRow } from "./types";
 
@@ -42,7 +42,7 @@ export default function WeightProgress() {
         .from("logs")
         .select("*")
         .eq("user_id", userId)
-        .eq("activity_id", WEIGHT_ACTIVITY_ID)
+        .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
       if (error) {
