@@ -12,7 +12,7 @@ import { format } from "date-fns";
 
 import { supabase } from "../../../api/supabaseClient";
 
-const LIFTING_ACTIVITY_ID = "e07d19fd-c9a0-42f0-a110-01d532a5b66d";
+const ACTIVITY_ID = "e07d19fd-c9a0-42f0-a110-01d532a5b66d";
 
 import type {
   SetEntry,
@@ -36,8 +36,6 @@ export default function Lifts() {
 
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   });
-
-  const [logs, setLogs] = useState<LogRow[]>([]);
 
   // Default empty lift section
   const emptyLiftSection = (): LiftSection => ({
@@ -67,13 +65,31 @@ export default function Lifts() {
   const [clean, setClean] = useState<LiftSection>(emptyLiftSection());
   const [notes, setNotes] = useState("");
 
+  const [userId, setUserId] = useState<string | null>(null)
+  const [logs, setLogs] = useState<LogRow[]>([]);
+
+  // Getting the userId
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Failed to get user:", error.message);
+        return;
+      }
+      setUserId(data?.user?.id || null);
+    };
+
+    getUser();
+  }, []);
+
   // Fetch all logs for this user/activity (for charts, history)
   useEffect(() => {
     async function fetchAllLogs() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
-        .eq("activity_id", LIFTING_ACTIVITY_ID)
+        .eq("user_id", userId)
+        .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
       if (error) {
@@ -84,7 +100,7 @@ export default function Lifts() {
       }
     }
     fetchAllLogs();
-  }, []);
+  }, [userId]);
 
   // Fetch single log for selected date and populate form
   useEffect(() => {
@@ -102,7 +118,8 @@ export default function Lifts() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
-        .eq("activity_id", LIFTING_ACTIVITY_ID)
+        .eq("user_id", userId)
+        .eq("activity_id", ACTIVITY_ID)
         .gte("datetime", startISO)
         .lte("datetime", endISO)
         .limit(1)
@@ -151,7 +168,7 @@ export default function Lifts() {
     }
 
     fetchLogForDate();
-  }, [datetime]);
+  }, [datetime, userId]);
 
   // Normalize sets: ensure sets is at least 1 everywhere
   function normalizeSets(lift: LiftSection): LiftSection {
@@ -199,8 +216,8 @@ export default function Lifts() {
       validateWeights(clean);
 
       const payload = {
-        user_id: user.id,
-        activity_id: LIFTING_ACTIVITY_ID,
+        user_id: userId,
+        activity_id: ACTIVITY_ID,
         datetime: new Date(datetime).toISOString(),
         data: {
           squat: normalizeSets(squat),
@@ -229,7 +246,8 @@ export default function Lifts() {
       const { data: updatedLogs, error: fetchError } = await supabase
         .from("logs")
         .select("*")
-        .eq("activity_id", LIFTING_ACTIVITY_ID)
+        .eq("user_id", userId)
+        .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
       if (fetchError) {
