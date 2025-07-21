@@ -580,7 +580,7 @@ export default function Lifts() {
 
         <div className="bg-slate-800 p-4 rounded-lg shadow-md">
           <ChartSection
-            title="Squat (Back Squat)"
+            title="Squat"
             data={formatTypedData("squat")}
             dataKey="weight"
             color="#4ade80"
