@@ -1,4 +1,4 @@
-import { useEffect, useState} from "react";
+import { useEffect, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -17,8 +17,8 @@ const ACTIVITY_ID = "a2fb0a80-f149-4761-a339-aeb282ba06a9";
 import type { LogRow } from "./types";
 
 function metersToMiles(meters: number) {
-    return meters / 1609.34;
-  }
+  return meters / 1609.34;
+}
 
 function formatDuration(durationSeconds: number): string {
   const totalSeconds = Math.round(durationSeconds);
@@ -50,8 +50,23 @@ function FitBounds({ route }: { route: [number, number][] }) {
 }
 
 export default function Hike() {
+  const [userId, setUserId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Getting the userId
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Failed to get user:", error.message);
+        return;
+      }
+      setUserId(data?.user?.id || null);
+    };
+
+    getUser();
+  }, []);
 
   // Fetches logs
   useEffect(() => {
@@ -86,6 +101,7 @@ export default function Hike() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
+        .eq("user_id", userId)
         .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
@@ -98,7 +114,7 @@ export default function Hike() {
       setLoading(false);
     }
     fetchAllLogs();
-  }, []);
+  }, [userId]);
 
   // Start coordinates for summary map
   const allStartCoords: [number, number][] = logs
@@ -161,7 +177,8 @@ export default function Hike() {
                 className="bg-slate-800 rounded-xl p-4 shadow-md flex flex-col"
               >
                 <h2 className="text-xl font-semibold">
-                  {log.data.name} — {format(new Date(log.datetime), "MMMM dd, yyyy")}
+                  {log.data.name} —{" "}
+                  {format(new Date(log.datetime), "MMMM dd, yyyy")}
                 </h2>
                 <p className="text-sm text-gray-300">
                   {metersToMiles(log.data.distance).toFixed(2)} mi ·{" "}
@@ -280,7 +297,12 @@ export default function Hike() {
                           <Tooltip>
                             <div className="text-sm">
                               <p className="font-semibold">{log.data.name}</p>
-                              <p>{format(new Date(log.datetime), "MMMM dd, yyyy")}</p>
+                              <p>
+                                {format(
+                                  new Date(log.datetime),
+                                  "MMMM dd, yyyy"
+                                )}
+                              </p>
                               <p>
                                 {metersToMiles(log.data.distance)?.toFixed(2)}{" "}
                                 mi
