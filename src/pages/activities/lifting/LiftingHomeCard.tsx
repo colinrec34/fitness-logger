@@ -5,9 +5,7 @@ import { supabase } from "../../../api/supabaseClient";
 
 const ACTIVITY_ID = "e07d19fd-c9a0-42f0-a110-01d532a5b66d";
 
-import type {
-  LogRow,
-} from "./types"
+import type { LogRow } from "./types";
 
 function estimateSessionsToGoal(
   current: number,
@@ -51,7 +49,7 @@ export default function LiftProgress() {
   useEffect(() => {
     async function fetchAllLogs() {
       if (!userId) return;
-      
+
       setLoading(true);
       const { data, error } = await supabase
         .from("logs")
@@ -92,22 +90,59 @@ export default function LiftProgress() {
   const sortedLogs = [...logs].sort((a, b) =>
     b.datetime.localeCompare(a.datetime)
   );
+
+  function getLatestNonZeroValue<T>(
+    logs: typeof sortedLogs,
+    extractor: (log: (typeof sortedLogs)[number]) => T | 0 | null | undefined
+  ): T | null {
+    for (const log of logs) {
+      const value = extractor(log);
+      if (value && value !== 0) return value;
+    }
+    return null;
+  }
+
   const latest = sortedLogs[0];
-  const formattedDatetime = latest.datetime ? format( new Date(latest.datetime), "MMMM d, yyyy")
-  : "";
+
+  const formattedDatetime = latest.datetime
+    ? format(new Date(latest.datetime), "MMMM d, yyyy")
+    : "";
+
   const relativeDate = latest?.datetime
     ? formatDistanceToNow(new Date(latest.datetime), { addSuffix: true })
     : "";
 
-  const squat = latest.data.squat?.work[0].weight ?? null;
-  const bench = latest.data.bench?.work[0].weight ?? null;
-  const deadlift = latest.data.deadlift?.work[0].weight ?? null;
-  const pullupsTotal = latest.data.pullups
-    ? latest.data.pullups.reduce((sum, set) => sum + (set.reps || 0), 0)
-    : 0;
+  const squat = getLatestNonZeroValue(
+    sortedLogs,
+    (log) => log.data.squat?.work[0].weight ?? 0
+  );
 
-  const overhead = latest.data.overhead?.work[0].weight ?? null;
-  const clean = latest.data.clean?.work[0].weight ?? null;
+  const bench = getLatestNonZeroValue(
+    sortedLogs,
+    (log) => log.data.bench?.work[0].weight ?? 0
+  );
+
+  const deadlift = getLatestNonZeroValue(
+    sortedLogs,
+    (log) => log.data.deadlift?.work[0].weight ?? 0
+  );
+
+  const pullupsTotal = getLatestNonZeroValue(sortedLogs, (log) =>
+    (log.data.pullups ?? []).reduce(
+      (sum: number, set) => sum + (set.reps || 0),
+      0
+    )
+  );
+
+  const overhead = getLatestNonZeroValue(
+    sortedLogs,
+    (log) => log.data.overhead?.work[0].weight ?? 0
+  );
+
+  const clean = getLatestNonZeroValue(
+    sortedLogs,
+    (log) => log.data.clean?.work[0].weight ?? 0
+  );
 
   return (
     <Card
@@ -215,7 +250,8 @@ export default function LiftProgress() {
 
           <div className="mb-4">
             <p className="mb-1 font-semibold">
-              Overhead Press: <span className="ml-2 font-bold">{overhead} lbs</span>
+              Overhead Press:{" "}
+              <span className="ml-2 font-bold">{overhead} lbs</span>
             </p>
             <p className="text-sm text-gray-300">
               Goal:
