@@ -87,10 +87,12 @@ export default function LiftProgress() {
     );
   }
 
+  // sorting logs by datetime
   const sortedLogs = [...logs].sort((a, b) =>
     b.datetime.localeCompare(a.datetime)
   );
 
+  // Function to get the latest nonzero work set
   function getLatestNonZeroValue<T>(
     logs: typeof sortedLogs,
     extractor: (log: (typeof sortedLogs)[number]) => T | 0 | null | undefined
@@ -112,6 +114,7 @@ export default function LiftProgress() {
     ? formatDistanceToNow(new Date(latest.datetime), { addSuffix: true })
     : "";
 
+  // Getting latest work set metrics
   const squat = getLatestNonZeroValue(
     sortedLogs,
     (log) => log.data.squat?.work[0].weight ?? 0
