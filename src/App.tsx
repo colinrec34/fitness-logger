@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 
+// Importing components
 import Weight from "./pages/activities/weight/Weight";
 import Lifting from "./pages/activities/lifting/Lifting";
 import Hiking from "./pages/activities/hiking/Hiking";
