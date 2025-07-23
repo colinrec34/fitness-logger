@@ -49,7 +49,7 @@ function FitBounds({ route }: { route: [number, number][] }) {
   return null;
 }
 
-export default function Hike() {
+export default function Hiking() {
   const [userId, setUserId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(false);

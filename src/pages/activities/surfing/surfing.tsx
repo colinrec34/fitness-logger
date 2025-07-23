@@ -13,7 +13,7 @@ const ACTIVITY_ID = "0ddcfe52-2da0-47b6-a44a-e282f54ac21d";
 
 import type { LocationRow, LogRow } from "./types";
 
-export default function Surf() {
+export default function Surfing() {
   const [showAddLocation, setShowAddLocation] = useState(false);
 
   // Datetime initialization to current time and variables

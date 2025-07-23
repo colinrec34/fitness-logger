@@ -21,7 +21,7 @@ import type {
   LogRow,
 } from "./types";
 
-export default function Lifts() {
+export default function Lifting() {
   const [datetime, setDatetime] = useState(() => {
     const now = new Date();
     now.setSeconds(0, 0); // Remove seconds and ms

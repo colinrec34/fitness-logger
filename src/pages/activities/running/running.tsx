@@ -53,7 +53,7 @@ function FitBounds({ route }: { route: [number, number][] }) {
   return null;
 }
 
-export default function Run() {
+export default function Running() {
   const [userId, setUserId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(false);

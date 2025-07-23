@@ -12,21 +12,21 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 
-import Weight from "./pages/activities/weight/weight";
-import Lifts from "./pages/activities/lifting/lifting";
-import Hikes from "./pages/activities/hiking/hiking";
-import Surf from "./pages/activities/surfing/surfing";
-import Run from "./pages/activities/running/running";
-import Snorkel from "./pages/activities/snorkeling/snorkeling";
+import Weight from "./pages/activities/weight/Weight";
+import Lifting from "./pages/activities/lifting/Lifting";
+import Hiking from "./pages/activities/hiking/Hiking";
+import Surfing from "./pages/activities/surfing/Surfing.tsx";
+import Running from "./pages/activities/running/Running";
+import Snorkeling from "./pages/activities/snorkeling/Snorkeling";
 
 // Map slug values from your DB to components
 const activityComponents: Record<string, React.FC> = {
   weight: Weight,
-  lifting: Lifts,
-  hiking: Hikes,
-  surfing: Surf,
-  running: Run,
-  snorkeling: Snorkel,
+  lifting: Lifting,
+  hiking: Hiking,
+  surfing: Surfing,
+  running: Running,
+  snorkeling: Snorkeling,
 };
 
 export default function App() {
