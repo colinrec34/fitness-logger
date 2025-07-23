@@ -62,7 +62,15 @@ export default function Lifts() {
     { reps: 0, sets: 1 },
   ]);
   const [overhead, setOverhead] = useState<LiftSection>(emptyLiftSection());
-  const [clean, setClean] = useState<LiftSection>(emptyLiftSection());
+  const [clean, setClean] = useState<LiftSection>({
+    warmup: [
+      { reps: 5, weight: 0, sets: 2 },
+      { reps: 5, weight: 0, sets: 1 },
+      { reps: 3, weight: 0, sets: 1 },
+      { reps: 2, weight: 0, sets: 1 },
+    ],
+    work: [{ reps: 5, weight: 0, sets: 3 }],
+  });
   const [notes, setNotes] = useState("");
 
   const [userId, setUserId] = useState<string | null>(null)
