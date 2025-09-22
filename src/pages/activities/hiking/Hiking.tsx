@@ -30,7 +30,7 @@ function formatDuration(durationSeconds: number): string {
     .padStart(2, "0")}s`;
 }
 
-function formatPace(durationSeconds?: number, distance?: number): string {
+const formatPace = (durationSeconds?: number, distance?: number) => {
   if (durationSeconds == null || distance == null || distance === 0)
     return "Pace N/A";
   const totalSecondsPerMile = durationSeconds / distance;
@@ -39,7 +39,7 @@ function formatPace(durationSeconds?: number, distance?: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")} / mi`;
 }
 
-function FitBounds({ route }: { route: [number, number][] }) {
+const FitBounds = ({ route }: { route: [number, number][] }) => {
   const map = useMap();
   useEffect(() => {
     if (route.length > 1) {

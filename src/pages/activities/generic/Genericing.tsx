@@ -488,7 +488,7 @@ export default function Genericing() {
   );
 }
 
-function FitBounds({ points }: { points: LatLngExpression[] }) {
+const FitBounds = ({ points }: { points: LatLngExpression[] }) => {
   const map = useMap();
   useEffect(() => {
     if (points.length > 1) {
