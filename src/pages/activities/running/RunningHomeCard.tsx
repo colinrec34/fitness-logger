@@ -112,6 +112,7 @@ export default function RunningHomeCard() {
   const formattedDatetime = latest?.datetime
     ? format(new Date(latest.datetime), "MMMM d, yyyy")
     : "";
+  console.log(latest.datetime)
   const relativeDate = latest?.datetime
     ? formatDistanceToNow(new Date(latest.datetime), { addSuffix: true })
     : "";
