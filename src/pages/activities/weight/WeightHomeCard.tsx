@@ -9,6 +9,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import Card from "../../../components/Card";
+import TimeRangeFilter, {
+  filterLogsByRange,
+  type TimeRange,
+} from "../../../components/TimeRangeFilter";
 
 import { supabase } from "../../../api/supabaseClient";
 const ACTIVITY_ID = "3bacbc7e-4e70-435a-8927-ccc7ff1568b7";
@@ -19,6 +23,7 @@ export default function WeightProgress() {
   const [userId, setUserId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState<TimeRange>("Max");
 
   // Getting the userId
   useEffect(() => {
@@ -75,7 +80,9 @@ export default function WeightProgress() {
     );
   }
 
-  const chartData = logs.map((log) => ({
+  const filteredLogs = filterLogsByRange(logs, range, (log) => log.datetime);
+
+  const chartData = filteredLogs.map((log) => ({
     date: format(new Date(log.datetime), "MMMM d, yyyy"),
     weight: log.data.weight,
   }));
@@ -100,6 +107,9 @@ export default function WeightProgress() {
         </span>
       }
     >
+      <div className="mb-3">
+        <TimeRangeFilter selected={range} onChange={setRange} />
+      </div>
       <div className="w-full h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
@@ -107,7 +117,7 @@ export default function WeightProgress() {
             margin={{ top: 10, right: 20, bottom: 5, left: -24 }}
           >
             <XAxis dataKey="date" fontSize={12} tickMargin={6} />
-            <YAxis domain={[150, "auto"]} fontSize={12} />
+            <YAxis domain={["dataMin - 2", "dataMax + 2"]} fontSize={12} />
             <Tooltip
               content={({ active, payload, label }) =>
                 active && payload && payload.length ? (
