@@ -9,6 +9,7 @@ import {
   useMap,
 } from "react-leaflet";
 import { supabase } from "../../../api/supabaseClient";
+import StatisticsSection from "../../../components/StatisticsSection";
 const ACTIVITY_ID = "0ddcfe52-2da0-47b6-a44a-e282f54ac21d";
 
 import type { LocationRow, LogRow } from "./types";
@@ -307,14 +308,6 @@ export default function Surfing() {
 
   const groupedLogsByLocation = groupLogsByLocation(logs, locations);
 
-  // Statistics
-  const totalSessions = logs.length;
-  const totalWaves = logs.reduce((sum, log) => sum + (log.data?.waves ?? 0), 0);
-  const totalDuration = logs.reduce(
-    (sum, log) => sum + (log.data?.duration ?? 0),
-    0
-  );
-
   return (
     <div className="flex flex-col md:flex-row gap-8 p-6">
       {/* Left Column */}
@@ -493,13 +486,15 @@ export default function Surfing() {
       {/* Right Column */}
       <div className="md:w-1/2 space-y-6">
         <h1 className="text-3xl font-bold">Surf Statistics</h1>
-        <div className="bg-slate-800 p-6 rounded-xl shadow-md">
-          <ul className="space-y-1">
-            <li>Total sessions: {totalSessions}</li>
-            <li>Total waves caught: {totalWaves}</li>
-            <li>Total hours: {(totalDuration / 60).toFixed(1)}</li>
-          </ul>
-        </div>
+        <StatisticsSection
+          logs={logs}
+          getDate={(log) => log.datetime}
+          computeStats={(filtered) => [
+            { label: "Total sessions", value: filtered.length },
+            { label: "Total waves caught", value: filtered.reduce((s, l) => s + (l.data?.waves ?? 0), 0) },
+            { label: "Total hours", value: (filtered.reduce((s, l) => s + (l.data?.duration ?? 0), 0) / 60).toFixed(1) },
+          ]}
+        />
 
         <div className="bg-slate-800 rounded-xl overflow-hidden shadow-md">
           <MapContainer

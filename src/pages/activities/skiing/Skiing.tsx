@@ -9,6 +9,7 @@ import {
   useMap,
 } from "react-leaflet";
 import { supabase } from "../../../api/supabaseClient";
+import StatisticsSection from "../../../components/StatisticsSection";
 const ACTIVITY_ID = "457e1feb-a2fa-468b-8f4e-7b16eb4d3560";
 
 import type { LocationRow, LogRow } from "./types";
@@ -300,18 +301,6 @@ export default function Skiing() {
 
   const groupedLogsByLocation = groupLogsByLocation(logs, locations);
 
-  // Statistics
-  const totalSessions = logs.length;
-  const totalRuns = logs.reduce((sum, log) => sum + (log.data?.runs ?? 0), 0);
-  const totalVertical = logs.reduce(
-    (sum, log) => sum + (log.data?.vertical ?? 0),
-    0
-  );
-  const totalDuration = logs.reduce(
-    (sum, log) => sum + (log.data?.duration ?? 0),
-    0
-  );
-
   return (
     <div className="flex flex-col md:flex-row gap-8 p-6">
       {/* Left Column */}
@@ -484,14 +473,16 @@ export default function Skiing() {
       {/* Right Column */}
       <div className="md:w-1/2 space-y-6">
         <h1 className="text-3xl font-bold">Ski Statistics</h1>
-        <div className="bg-slate-800 p-6 rounded-xl shadow-md">
-          <ul className="space-y-1">
-            <li>Total sessions: {totalSessions}</li>
-            <li>Total runs: {totalRuns}</li>
-            <li>Total vertical: {totalVertical.toLocaleString()} ft</li>
-            <li>Total hours: {(totalDuration / 60).toFixed(1)}</li>
-          </ul>
-        </div>
+        <StatisticsSection
+          logs={logs}
+          getDate={(log) => log.datetime}
+          computeStats={(filtered) => [
+            { label: "Total sessions", value: filtered.length },
+            { label: "Total runs", value: filtered.reduce((s, l) => s + (l.data?.runs ?? 0), 0) },
+            { label: "Total vertical", value: `${filtered.reduce((s, l) => s + (l.data?.vertical ?? 0), 0).toLocaleString()} ft` },
+            { label: "Total hours", value: (filtered.reduce((s, l) => s + (l.data?.duration ?? 0), 0) / 60).toFixed(1) },
+          ]}
+        />
 
         <div className="bg-slate-800 rounded-xl overflow-hidden shadow-md">
           <MapContainer

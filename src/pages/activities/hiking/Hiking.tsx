@@ -12,6 +12,7 @@ import polyline from "@mapbox/polyline";
 import { format } from "date-fns";
 
 import { supabase } from "../../../api/supabaseClient";
+import StatisticsSection from "../../../components/StatisticsSection";
 const ACTIVITY_ID = "a2fb0a80-f149-4761-a339-aeb282ba06a9";
 
 import type { LogRow } from "./types";
@@ -131,33 +132,6 @@ export default function Hiking() {
         Array.isArray(coord) && coord.length === 2
     );
 
-  // STATISTICS
-  const totalHikes = logs.length;
-  const totalMiles = metersToMiles(
-    logs.reduce((sum, log) => sum + log.data.distance, 0)
-  );
-  const totalElevation = logs.reduce(
-    (sum, log) => sum + log.data.total_elevation_gain,
-    0
-  );
-
-  const now = new Date();
-  const oneYearAgo = new Date();
-  oneYearAgo.setFullYear(now.getFullYear() - 1);
-
-  const lastYearHikes = logs.filter((log) => {
-    return new Date(log.datetime) >= oneYearAgo;
-  });
-
-  const lastYearMiles = metersToMiles(
-    lastYearHikes.reduce((sum, log) => sum + (log.data.distance || 0), 0)
-  );
-
-  const lastYearElevation = lastYearHikes.reduce(
-    (sum, log) => sum + (log.data.total_elevation_gain || 0),
-    0
-  );
-
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Hikes</h1>
@@ -235,44 +209,15 @@ export default function Hiking() {
 
         {/* Stats + map column */}
         <div className={`lg:block space-y-6 text-gray-200`}>
-          {totalHikes > 0 && (
-            <div className="bg-slate-800 rounded-xl p-4 shadow-md">
-              <h2 className="text-xl font-semibold mb-2">Last 12 Months</h2>
-              <p>
-                Total Hikes:{" "}
-                <span className="font-semibold">{lastYearHikes.length}</span>
-              </p>
-              <p>
-                Total Distance:{" "}
-                <span className="font-semibold">
-                  {lastYearMiles.toFixed(2)} mi
-                </span>
-              </p>
-              <p>
-                Total Elevation Gain:{" "}
-                <span className="font-semibold">
-                  {lastYearElevation.toFixed(0)} ft
-                </span>
-              </p>
-
-              <h2 className="text-xl font-semibold mt-4 mb-2">All Time</h2>
-              <p>
-                Total Hikes: <span className="font-semibold">{totalHikes}</span>
-              </p>
-              <p>
-                Total Distance:{" "}
-                <span className="font-semibold">
-                  {totalMiles.toFixed(2)} mi
-                </span>
-              </p>
-              <p>
-                Total Elevation Gain:{" "}
-                <span className="font-semibold">
-                  {totalElevation.toFixed(0)} ft
-                </span>
-              </p>
-            </div>
-          )}
+          <StatisticsSection
+            logs={logs}
+            getDate={(log) => log.datetime}
+            computeStats={(filtered) => [
+              { label: "Total Hikes", value: filtered.length },
+              { label: "Total Distance", value: `${metersToMiles(filtered.reduce((s, l) => s + l.data.distance, 0)).toFixed(2)} mi` },
+              { label: "Total Elevation Gain", value: `${filtered.reduce((s, l) => s + l.data.total_elevation_gain, 0).toFixed(0)} ft` },
+            ]}
+          />
 
           {allStartCoords.length > 0 && (
             <div className="bg-slate-800 p-4 rounded-xl shadow-md">
