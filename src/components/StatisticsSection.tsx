@@ -1,4 +1,3 @@
-import { useState } from "react";
 import TimeRangeFilter, {
   filterLogsByRange,
   type TimeRange,
@@ -10,15 +9,17 @@ type Props<T> = {
   logs: T[];
   getDate: (log: T) => string;
   computeStats: (filteredLogs: T[]) => StatItem[];
+  range: TimeRange;
+  onRangeChange: (range: TimeRange) => void;
 };
 
 export default function StatisticsSection<T>({
   logs,
   getDate,
   computeStats,
+  range,
+  onRangeChange,
 }: Props<T>) {
-  const [range, setRange] = useState<TimeRange>("Max");
-
   if (logs.length === 0) return null;
 
   const filtered = filterLogsByRange(logs, range, getDate);
@@ -26,7 +27,7 @@ export default function StatisticsSection<T>({
 
   return (
     <div className="bg-slate-800 p-6 rounded-xl shadow-md">
-      <TimeRangeFilter selected={range} onChange={setRange} />
+      <TimeRangeFilter selected={range} onChange={onRangeChange} />
       <ul className="space-y-1 mt-3">
         {stats.map((item) => (
           <li key={item.label}>

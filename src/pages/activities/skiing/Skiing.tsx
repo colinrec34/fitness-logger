@@ -10,12 +10,14 @@ import {
 } from "react-leaflet";
 import { supabase } from "../../../api/supabaseClient";
 import StatisticsSection from "../../../components/StatisticsSection";
+import { filterLogsByRange, type TimeRange } from "../../../components/TimeRangeFilter";
 const ACTIVITY_ID = "457e1feb-a2fa-468b-8f4e-7b16eb4d3560";
 
 import type { LocationRow, LogRow } from "./types";
 
 export default function Skiing() {
   const [showAddLocation, setShowAddLocation] = useState(false);
+  const [range, setRange] = useState<TimeRange>("Max");
 
   // Datetime initialization to current time and variables
   const [datetime, setDatetime] = useState(() => {
@@ -299,7 +301,8 @@ export default function Skiing() {
     return Array.from(grouped.values());
   }
 
-  const groupedLogsByLocation = groupLogsByLocation(logs, locations);
+  const filteredLogs = filterLogsByRange(logs, range, (log) => log.datetime);
+  const groupedLogsByLocation = groupLogsByLocation(filteredLogs, locations);
 
   return (
     <div className="flex flex-col md:flex-row gap-8 p-6">
@@ -476,6 +479,8 @@ export default function Skiing() {
         <StatisticsSection
           logs={logs}
           getDate={(log) => log.datetime}
+          range={range}
+          onRangeChange={setRange}
           computeStats={(filtered) => [
             { label: "Total sessions", value: filtered.length },
             { label: "Total runs", value: filtered.reduce((s, l) => s + (l.data?.runs ?? 0), 0) },

@@ -10,12 +10,14 @@ import {
 } from "react-leaflet";
 import { supabase } from "../../../api/supabaseClient";
 import StatisticsSection from "../../../components/StatisticsSection";
+import { filterLogsByRange, type TimeRange } from "../../../components/TimeRangeFilter";
 const ACTIVITY_ID = "c9585467-e875-4b95-91fe-4263493854b0";
 
 import type { LocationRow, LogRow } from "./types";
 
 export default function Snorkeling() {
   const [showAddLocation, setShowAddLocation] = useState(false);
+  const [range, setRange] = useState<TimeRange>("Max");
 
   // Datetime initialization to current time and variables
   const [datetime, setDatetime] = useState(() => {
@@ -294,7 +296,8 @@ export default function Snorkeling() {
     return Array.from(grouped.values());
   }
 
-  const groupedLogsByLocation = groupLogsByLocation(logs, locations);
+  const filteredLogs = filterLogsByRange(logs, range, (log) => log.datetime);
+  const groupedLogsByLocation = groupLogsByLocation(filteredLogs, locations);
 
   return (
     <div className="flex flex-col md:flex-row gap-8 p-6">
@@ -442,6 +445,8 @@ export default function Snorkeling() {
         <StatisticsSection
           logs={logs}
           getDate={(log) => log.datetime}
+          range={range}
+          onRangeChange={setRange}
           computeStats={(filtered) => [
             { label: "Total sessions", value: filtered.length },
             { label: "Total hours", value: (filtered.reduce((s, l) => s + (l.data?.duration ?? 0), 0) / 60).toFixed(1) },

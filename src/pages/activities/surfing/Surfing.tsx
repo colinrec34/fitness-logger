@@ -10,12 +10,14 @@ import {
 } from "react-leaflet";
 import { supabase } from "../../../api/supabaseClient";
 import StatisticsSection from "../../../components/StatisticsSection";
+import { filterLogsByRange, type TimeRange } from "../../../components/TimeRangeFilter";
 const ACTIVITY_ID = "0ddcfe52-2da0-47b6-a44a-e282f54ac21d";
 
 import type { LocationRow, LogRow } from "./types";
 
 export default function Surfing() {
   const [showAddLocation, setShowAddLocation] = useState(false);
+  const [range, setRange] = useState<TimeRange>("Max");
 
   // Datetime initialization to current time and variables
   const [datetime, setDatetime] = useState(() => {
@@ -306,7 +308,8 @@ export default function Surfing() {
     return Array.from(grouped.values());
   }
 
-  const groupedLogsByLocation = groupLogsByLocation(logs, locations);
+  const filteredLogs = filterLogsByRange(logs, range, (log) => log.datetime);
+  const groupedLogsByLocation = groupLogsByLocation(filteredLogs, locations);
 
   return (
     <div className="flex flex-col md:flex-row gap-8 p-6">
@@ -489,6 +492,8 @@ export default function Surfing() {
         <StatisticsSection
           logs={logs}
           getDate={(log) => log.datetime}
+          range={range}
+          onRangeChange={setRange}
           computeStats={(filtered) => [
             { label: "Total sessions", value: filtered.length },
             { label: "Total waves caught", value: filtered.reduce((s, l) => s + (l.data?.waves ?? 0), 0) },

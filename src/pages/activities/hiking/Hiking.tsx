@@ -13,6 +13,7 @@ import { format } from "date-fns";
 
 import { supabase } from "../../../api/supabaseClient";
 import StatisticsSection from "../../../components/StatisticsSection";
+import { filterLogsByRange, type TimeRange } from "../../../components/TimeRangeFilter";
 const ACTIVITY_ID = "a2fb0a80-f149-4761-a339-aeb282ba06a9";
 
 import type { LogRow } from "./types";
@@ -54,6 +55,7 @@ export default function Hiking() {
   const [userId, setUserId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [range, setRange] = useState<TimeRange>("Max");
 
   // Getting the userId
   useEffect(() => {
@@ -118,8 +120,10 @@ export default function Hiking() {
     fetchAllLogs();
   }, [userId]);
 
+  const filteredLogs = filterLogsByRange(logs, range, (log) => log.datetime);
+
   // Start coordinates for summary map
-  const allStartCoords: [number, number][] = logs
+  const allStartCoords: [number, number][] = filteredLogs
     .map((log) => {
       const encoded = log.data.map?.summary_polyline;
       if (!encoded) return null;
@@ -212,6 +216,8 @@ export default function Hiking() {
           <StatisticsSection
             logs={logs}
             getDate={(log) => log.datetime}
+            range={range}
+            onRangeChange={setRange}
             computeStats={(filtered) => [
               { label: "Total Hikes", value: filtered.length },
               { label: "Total Distance", value: `${metersToMiles(filtered.reduce((s, l) => s + l.data.distance, 0)).toFixed(2)} mi` },
@@ -231,7 +237,7 @@ export default function Hiking() {
                   style={{ height: "100%", width: "100%" }}
                 >
                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  {logs.map(
+                  {filteredLogs.map(
                     (log, i) =>
                       polyline.decode(log.data.map.summary_polyline)[0] && (
                         <Marker
