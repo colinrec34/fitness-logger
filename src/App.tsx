@@ -19,6 +19,7 @@ import Hiking from "./pages/activities/hiking/Hiking";
 import Surfing from "./pages/activities/surfing/Surfing.tsx";
 import Running from "./pages/activities/running/Running";
 import Snorkeling from "./pages/activities/snorkeling/Snorkeling";
+import Skiing from "./pages/activities/skiing/Skiing";
 
 // Map slug values from your DB to components
 const activityComponents: Record<string, React.FC> = {
@@ -28,6 +29,7 @@ const activityComponents: Record<string, React.FC> = {
   surfing: Surfing,
   running: Running,
   snorkeling: Snorkeling,
+  skiing: Skiing,
 };
 
 export default function App() {
