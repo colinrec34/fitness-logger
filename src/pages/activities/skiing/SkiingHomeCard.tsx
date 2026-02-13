@@ -84,7 +84,7 @@ export default function SkiingProgress() {
 
   return (
     <Card
-      title={`Last Ski Session${latestLocation?.name ? ` - ${latestLocation.name}` : ""}`}
+      title={`⛷️ ${latestLocation?.name ? ` - ${latestLocation.name}` : ""}`}
       subtitle={
         <span className="text-gray-400">
           {formattedDatetime} · {relativeDate}
