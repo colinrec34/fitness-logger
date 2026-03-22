@@ -54,6 +54,18 @@ export default function App() {
     }
 
     fetchActivitySlugs();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        fetchActivitySlugs();
+      } else {
+        setSlugs([]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   if (loading) {
