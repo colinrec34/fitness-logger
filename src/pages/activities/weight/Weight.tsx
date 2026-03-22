@@ -2,97 +2,82 @@ import { useState, useEffect } from "react";
 import WeightProgress from "./WeightHomeCard";
 
 import { supabase } from "../../../api/supabaseClient";
+import { useAuth } from "../../../context/AuthContext";
+import { currentDatetimeLocal } from "../../../lib/datetimeLocal";
 import type { LogRow } from "./types";
+
 const ACTIVITY_ID = "3bacbc7e-4e70-435a-8927-ccc7ff1568b7";
 
 export default function Weight() {
-  const [datetime, setDatetime] = useState(() => {
-    const now = new Date();
-    now.setSeconds(0, 0); // Remove seconds and ms
-
-    const pad = (n: number) => n.toString().padStart(2, "0");
-
-    const year = now.getFullYear();
-    const month = pad(now.getMonth() + 1); // Months are 0-indexed
-    const day = pad(now.getDate());
-    const hours = pad(now.getHours());
-    const minutes = pad(now.getMinutes());
-
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  });
-
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const [datetime, setDatetime] = useState(currentDatetimeLocal);
+  const [weight, setWeight] = useState<number | "">("");
   const [logs, setLogs] = useState<LogRow[]>([]);
-
-  // Getting the userId
-  useEffect(() => {
-    const getUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        console.error("Failed to get user:", error.message);
-        return;
-      }
-      setUserId(data?.user?.id || null);
-    };
-
-    getUser();
-  }, []);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchAllLogs() {
-      if (!userId) return;
-      
+      if (!user) return;
+      setLoading(true);
+      setError(null);
+
       const { data, error } = await supabase
         .from("logs")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", user.id)
         .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
       if (error) {
         console.error("Error fetching logs:", error);
+        setError("Failed to load weight data. Please refresh.");
         setLogs([]);
       } else if (data) {
         setLogs(data);
       }
+      setLoading(false);
     }
     fetchAllLogs();
-  }, [userId]);
-
-  const [weight, setWeight] = useState<number | "">("");
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError) throw authError;
-    if (!user) throw new Error("User not authenticated");
+    if (!user) return;
 
     if (weight === "") {
       alert("Please enter a weight.");
       return;
     }
 
-    const payload = {
-      user_id: user.id,
-      activity_id: ACTIVITY_ID,
-      datetime: new Date(datetime).toISOString(),
-      data: {
-        weight: weight,
-      },
-    };
+    try {
+      const payload = {
+        user_id: user.id,
+        activity_id: ACTIVITY_ID,
+        datetime: new Date(datetime).toISOString(),
+        data: { weight },
+      };
 
-    const { error } = await supabase
-      .from("logs")
-      .upsert(payload, { onConflict: "activity_id,datetime" });
+      const { error } = await supabase
+        .from("logs")
+        .upsert(payload, { onConflict: "activity_id,datetime" });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    alert("Lifting session logged!");
+      alert("Weight logged!");
+
+      const { data: updatedLogs, error: fetchError } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("activity_id", ACTIVITY_ID)
+        .order("datetime", { ascending: true });
+
+      if (!fetchError && updatedLogs) setLogs(updatedLogs);
+    } catch (err) {
+      console.error("Submission error:", err);
+      alert("Failed to save log. Please try again.");
+    }
   };
 
   return (
@@ -143,7 +128,11 @@ export default function Weight() {
           <h2 className="text-xl font-semibold text-white mb-4">
             Weight Progress
           </h2>
-          {logs.length > 0 ? (
+          {loading ? (
+            <p className="text-gray-400 italic">Loading weight data...</p>
+          ) : error ? (
+            <p className="text-red-400 italic">{error}</p>
+          ) : logs.length > 0 ? (
             <WeightProgress />
           ) : (
             <p className="text-gray-400 italic">No weight data yet.</p>

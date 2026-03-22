@@ -1,4 +1,4 @@
-import { useEffect, useState} from "react";
+import { useEffect, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -12,11 +12,12 @@ import polyline from "@mapbox/polyline";
 import { format } from "date-fns";
 
 import { supabase } from "../../../api/supabaseClient";
+import { useAuth } from "../../../context/AuthContext";
 import StatisticsSection from "../../../components/StatisticsSection";
 import { filterLogsByRange, type TimeRange } from "../../../components/TimeRangeFilter";
 
-// For running activity
 const ACTIVITY_ID = "d3555da1-b932-42e2-9cbb-0908aaf1c73a";
+const STRAVA_SYNC_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/strava-sync`;
 
 import type { LogRow } from "./types";
 
@@ -44,7 +45,6 @@ function formatPace(durationSeconds?: number, distance?: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")} / mi`;
 }
 
-// Helper to auto-fit the map view to the route
 function FitBounds({ route }: { route: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
@@ -55,49 +55,36 @@ function FitBounds({ route }: { route: [number, number][] }) {
   return null;
 }
 
+function metersToMiles(meters: number) {
+  return meters / 1609.34;
+}
+
 export default function Running() {
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user } = useAuth();
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [range, setRange] = useState<TimeRange>("Max");
 
-  // Getting the userId
-  useEffect(() => {
-    const getUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        console.error("Failed to get user:", error.message);
-        return;
-      }
-      setUserId(data?.user?.id || null);
-    };
-
-    getUser();
-  }, []);
-
-  // Fetching logs
   useEffect(() => {
     async function fetchAllLogs() {
-      if (!userId) return;
+      if (!user) return;
       setLoading(true);
+      setError(null);
+
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
 
       if (!accessToken) {
         console.warn("No session or access token found.");
+        setLoading(false);
         return;
       }
 
-      // Strava edge function to update logs
-      const syncRes = await fetch(
-        "https://rcdkucjsapmykzkiodzu.supabase.co/functions/v1/strava-sync",
-        {
-          credentials: "include",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
+      const syncRes = await fetch(STRAVA_SYNC_URL, {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
 
       if (!syncRes.ok) {
         console.error("Strava sync failed:", await syncRes.text());
@@ -109,12 +96,13 @@ export default function Running() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", user.id)
         .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
       if (error) {
         console.error("Error fetching logs:", error);
+        setError("Failed to load runs. Please refresh.");
         setLogs([]);
       } else if (data) {
         setLogs(data);
@@ -122,16 +110,14 @@ export default function Running() {
       setLoading(false);
     }
     fetchAllLogs();
-  }, [userId]);
+  }, [user]);
 
   const filteredLogs = filterLogsByRange(logs, range, (log) => log.datetime);
 
-  // Start coordinates for summary map
   const allStartCoords: [number, number][] = filteredLogs
     .map((log) => {
       const encoded = log.data.map?.summary_polyline;
       if (!encoded) return null;
-
       const coords = polyline.decode(encoded);
       return coords.length > 0 ? coords[0] : null;
     })
@@ -139,11 +125,6 @@ export default function Running() {
       (coord): coord is [number, number] =>
         Array.isArray(coord) && coord.length === 2
     );
-
-  // Data formatting functions
-  function metersToMiles(meters: number) {
-    return meters / 1609.34;
-  }
 
   return (
     <div className="p-6">
@@ -154,16 +135,18 @@ export default function Running() {
         <div className="overflow-y-auto max-h-[calc(100vh-150px)] pr-2 space-y-6 scroll-hide">
           {loading ? (
             <p className="text-gray-400 italic">Loading runs...</p>
+          ) : error ? (
+            <p className="text-red-400 italic">{error}</p>
           ) : logs.length === 0 ? (
             <p className="text-gray-400 italic">No runs found.</p>
           ) : (
             logs
-              .slice() // copy the array
+              .slice()
               .sort(
                 (a, b) =>
                   new Date(b.datetime).getTime() -
                   new Date(a.datetime).getTime()
-              ) // newest first
+              )
               .map((log) => (
                 <div
                   key={log.id}
@@ -268,21 +251,15 @@ export default function Running() {
                             <div className="text-sm">
                               <p className="font-semibold">{log.data.name}</p>
                               <p>
-                                {format(
-                                  new Date(log.datetime),
-                                  "MMMM dd, yyyy"
-                                )}
+                                {format(new Date(log.datetime), "MMMM dd, yyyy")}
                               </p>
                               <p>
-                                {metersToMiles(log.data.distance)?.toFixed(2)}{" "}
-                                mi
+                                {metersToMiles(log.data.distance)?.toFixed(2)} mi
                               </p>
                               <p>
                                 {log.data.total_elevation_gain?.toFixed(0)} ft
                               </p>
-                              <p>
-                                {formatDuration(log.data.elapsed_time || 0)}
-                              </p>
+                              <p>{formatDuration(log.data.elapsed_time || 0)}</p>
                               <p>
                                 {formatPace(
                                   log.data.elapsed_time,

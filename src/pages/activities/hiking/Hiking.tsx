@@ -12,9 +12,12 @@ import polyline from "@mapbox/polyline";
 import { format } from "date-fns";
 
 import { supabase } from "../../../api/supabaseClient";
+import { useAuth } from "../../../context/AuthContext";
 import StatisticsSection from "../../../components/StatisticsSection";
 import { filterLogsByRange, type TimeRange } from "../../../components/TimeRangeFilter";
+
 const ACTIVITY_ID = "a2fb0a80-f149-4761-a339-aeb282ba06a9";
+const STRAVA_SYNC_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/strava-sync`;
 
 import type { LogRow } from "./types";
 
@@ -39,7 +42,7 @@ const formatPace = (durationSeconds?: number, distance?: number) => {
   const minutes = Math.floor(totalSecondsPerMile / 60);
   const seconds = Math.round(totalSecondsPerMile % 60);
   return `${minutes}:${seconds.toString().padStart(2, "0")} / mi`;
-}
+};
 
 const FitBounds = ({ route }: { route: [number, number][] }) => {
   const map = useMap();
@@ -49,51 +52,34 @@ const FitBounds = ({ route }: { route: [number, number][] }) => {
     }
   }, [route, map]);
   return null;
-}
+};
 
 export default function Hiking() {
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user } = useAuth();
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [range, setRange] = useState<TimeRange>("Max");
 
-  // Getting the userId
-  useEffect(() => {
-    const getUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        console.error("Failed to get user:", error.message);
-        return;
-      }
-      setUserId(data?.user?.id || null);
-    };
-
-    getUser();
-  }, []);
-
-  // Fetches logs
   useEffect(() => {
     async function fetchAllLogs() {
-      if (!userId) return;
+      if (!user) return;
       setLoading(true);
+      setError(null);
+
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
 
       if (!accessToken) {
         console.warn("No session or access token found.");
+        setLoading(false);
         return;
       }
 
-      // Strava edge function to update logs
-      const syncRes = await fetch(
-        "https://rcdkucjsapmykzkiodzu.supabase.co/functions/v1/strava-sync",
-        {
-          credentials: "include",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
+      const syncRes = await fetch(STRAVA_SYNC_URL, {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
 
       if (!syncRes.ok) {
         console.error("Strava sync failed:", await syncRes.text());
@@ -105,12 +91,13 @@ export default function Hiking() {
       const { data, error } = await supabase
         .from("logs")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", user.id)
         .eq("activity_id", ACTIVITY_ID)
         .order("datetime", { ascending: true });
 
       if (error) {
         console.error("Error fetching logs:", error);
+        setError("Failed to load hikes. Please refresh.");
         setLogs([]);
       } else if (data) {
         setLogs(data);
@@ -118,16 +105,14 @@ export default function Hiking() {
       setLoading(false);
     }
     fetchAllLogs();
-  }, [userId]);
+  }, [user]);
 
   const filteredLogs = filterLogsByRange(logs, range, (log) => log.datetime);
 
-  // Start coordinates for summary map
   const allStartCoords: [number, number][] = filteredLogs
     .map((log) => {
       const encoded = log.data.map?.summary_polyline;
       if (!encoded) return null;
-
       const coords = polyline.decode(encoded);
       return coords.length > 0 ? coords[0] : null;
     })
@@ -139,14 +124,13 @@ export default function Hiking() {
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Hikes</h1>
-      {/* Two-column layout*/}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Logs column */}
-        <div
-          className={`lg:block overflow-y-auto max-h-[calc(100vh-150px)] pr-2 space-y-6 scroll-hide`}
-        >
+        <div className="lg:block overflow-y-auto max-h-[calc(100vh-150px)] pr-2 space-y-6 scroll-hide">
           {loading ? (
             <p className="text-gray-400 italic">Loading hikes...</p>
+          ) : error ? (
+            <p className="text-red-400 italic">{error}</p>
           ) : logs.length === 0 ? (
             <p className="text-gray-400 italic">No hikes found.</p>
           ) : (
@@ -168,9 +152,6 @@ export default function Hiking() {
                     metersToMiles(log.data.distance)
                   )}
                 </p>
-                {/* {log.data.notes && (
-                  <p className="mt-2 italic text-gray-400">{log.data.notes}</p>
-                )} */}
                 {log.data.map.summary_polyline?.length > 1 ? (
                   <div className="w-full aspect-[4/3] relative mt-4 rounded overflow-hidden">
                     <MapContainer
@@ -181,16 +162,12 @@ export default function Hiking() {
                     >
                       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                       <Polyline
-                        positions={polyline.decode(
-                          log.data.map.summary_polyline
-                        )}
+                        positions={polyline.decode(log.data.map.summary_polyline)}
                         color="#1e293b"
                         weight={8}
                       />
                       <Polyline
-                        positions={polyline.decode(
-                          log.data.map.summary_polyline
-                        )}
+                        positions={polyline.decode(log.data.map.summary_polyline)}
                         color="#32CD32"
                         weight={4}
                       >
@@ -212,7 +189,7 @@ export default function Hiking() {
         </div>
 
         {/* Stats + map column */}
-        <div className={`lg:block space-y-6 text-gray-200`}>
+        <div className="lg:block space-y-6 text-gray-200">
           <StatisticsSection
             logs={logs}
             getDate={(log) => log.datetime}
@@ -250,21 +227,15 @@ export default function Hiking() {
                             <div className="text-sm">
                               <p className="font-semibold">{log.data.name}</p>
                               <p>
-                                {format(
-                                  new Date(log.datetime),
-                                  "MMMM dd, yyyy"
-                                )}
+                                {format(new Date(log.datetime), "MMMM dd, yyyy")}
                               </p>
                               <p>
-                                {metersToMiles(log.data.distance)?.toFixed(2)}{" "}
-                                mi
+                                {metersToMiles(log.data.distance)?.toFixed(2)} mi
                               </p>
                               <p>
                                 {log.data.total_elevation_gain?.toFixed(0)} ft
                               </p>
-                              <p>
-                                {formatDuration(log.data.elapsed_time || 0)}
-                              </p>
+                              <p>{formatDuration(log.data.elapsed_time || 0)}</p>
                               <p>
                                 {formatPace(
                                   log.data.elapsed_time,
