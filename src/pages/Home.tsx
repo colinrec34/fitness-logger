@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../api/supabaseClient";
+import { useAuth } from "../context/AuthContext";
 
 import WeightProgress from "./activities/weight/WeightHomeCard";
 import LiftProgress from "./activities/lifting/LiftingHomeCard";
@@ -16,32 +17,17 @@ type ActivityFlags = {
 };
 
 export default function Home() {
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user } = useAuth();
   const [active, setActive] = useState<ActivityFlags>({});
 
-  // Getting the userId
   useEffect(() => {
-    const getUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        console.error("Failed to get user:", error.message);
-        return;
-      }
-      setUserId(data?.user?.id || null);
-    };
+    if (!user) return;
 
-    getUser();
-  }, []);
-
-  // Getting activities
-  useEffect(() => {
     async function fetchActiveActivities() {
-      if (!userId) return;
-
       const { data, error } = await supabase
         .from("activities")
         .select("slug, is_active")
-        .eq("user_id", userId);
+        .eq("user_id", user!.id);
 
       if (error) {
         console.error("Failed to fetch activities:", error);
@@ -56,10 +42,9 @@ export default function Home() {
     }
 
     fetchActiveActivities();
-  }, [userId]);
+  }, [user]);
 
-  const hasProgress =
-    active.weight || active.lifting;
+  const hasProgress = active.weight || active.lifting;
 
   const hasOutdoor =
     active.surfing || active.hiking || active.running || active.snorkeling || active.skiing;

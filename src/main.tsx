@@ -5,11 +5,13 @@ import { Analytics } from "@vercel/analytics/react"
 import './index.css'
 import "./lib/leafletIconFix"
 import App from './App.tsx'
-
+import { AuthProvider } from './context/AuthContext.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
-    <Analytics />
+    <AuthProvider>
+      <App />
+      <Analytics />
+    </AuthProvider>
   </StrictMode>,
 )

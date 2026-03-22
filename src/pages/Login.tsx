@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../api/supabaseClient";
-import type { Session } from "@supabase/supabase-js";
+import { useAuth } from "../context/AuthContext";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function AuthPage() {
@@ -16,16 +16,11 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
-    supabase.auth
-      .getSession()
-      .then((result: { data: { session: Session | null } }) => {
-        if (result.data.session?.user) {
-          navigate("/");
-        }
-      });
-  }, [navigate]);
+    if (user) navigate("/");
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
