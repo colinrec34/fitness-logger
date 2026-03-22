@@ -13,13 +13,12 @@ interface MinimalLog {
   id: string;
   datetime: string;
   location_id?: string;
-  data: Record<string, unknown>;
 }
 
-export function groupLogsByLocation(
-  logs: MinimalLog[],
+export function groupLogsByLocation<T extends MinimalLog>(
+  logs: T[],
   locations: MinimalLocation[],
-  getMetric: (log: MinimalLog) => number
+  getMetric: (log: T) => number
 ): Array<{
   name: string;
   coordinates: [number, number];

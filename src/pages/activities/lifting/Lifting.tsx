@@ -158,7 +158,7 @@ export default function Lifting() {
     }
 
     fetchLogForDate();
-  }, [datetime, userId]);
+  }, [datetime, user]);
 
   // Normalize sets: ensure sets is at least 1 everywhere
   function normalizeSets(lift: LiftSection): LiftSection {
