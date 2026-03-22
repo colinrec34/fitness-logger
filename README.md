@@ -38,6 +38,12 @@ npm install
 ```
 VITE_SUPABASE_URL=your-supabase-url
 VITE_SUPABASE_ANON_KEY=your-anon-key
+
+# Optional: required for the ESF-551 webhook endpoint
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+ESF551_WEBHOOK_TOKEN=shared-secret-for-pico-webhook
+ESF551_USER_ID=target-user-id-for-weight-logs
+ESF551_WEIGHT_ACTIVITY_ID=optional-weight-activity-id
 ```
 
 ### 4. Start Local Dev Server
@@ -54,6 +60,9 @@ src/
 ├── pages/            # Activity pages (lifting, surf, etc.) and Home/Login pages
 ├── App.tsx           # App entry point
 └── main.tsx          # Vite entry file
+
+pico/
+└── esf551/           # MicroPython collector for the Etekcity ESF-551 scale
 ```
 
 ## 🔮 Planned Updates
