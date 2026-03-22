@@ -202,11 +202,7 @@ export default function Running() {
                         />
                       </MapContainer>
                     </div>
-                  ) : (
-                    <div className="w-full aspect-[4/3] mt-4 flex items-center justify-center rounded bg-slate-700 text-gray-400 italic">
-                      Route data not available
-                    </div>
-                  )}
+                  ) : null}
                 </div>
               ))
           )}
