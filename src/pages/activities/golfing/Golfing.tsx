@@ -28,9 +28,9 @@ export default function Golfing() {
 
   const [form, setForm] = useState({
     location: "",
-    runs: 0,
-    vertical: 0,
-    duration: 0,
+    holes: 9,
+    score: 0,
+    players: 2,
     notes: "",
   });
 
@@ -136,13 +136,13 @@ export default function Golfing() {
       if (data) {
         setForm({
           location: data.location || "",
-          runs: data.data?.runs || 0,
-          vertical: data.data?.vertical || 0,
-          duration: data.data?.duration || 0,
+          holes: data.data?.holes || 0,
+          score: data.data?.score || 0,
+          players: data.data?.players || 0,
           notes: data.data?.notes || "",
         });
       } else {
-        setForm({ location: "", runs: 0, vertical: 0, duration: 0, notes: "" });
+        setForm({ location: "", holes: 0, score: 0, players: 0, notes: "" });
       }
     }
     fetchLogForDate();
@@ -169,9 +169,9 @@ export default function Golfing() {
         datetime: new Date(datetime).toISOString(),
         location_id: locMatch.id,
         data: {
-          runs: form.runs,
-          vertical: form.vertical,
-          duration: form.duration,
+          holes: form.holes,
+          score: form.score,
+          players: form.players,
           notes: form.notes,
         },
       };
@@ -202,7 +202,7 @@ export default function Golfing() {
   const groupedLogsByLocation = groupLogsByLocation(
     filteredLogs,
     locations,
-    (log) => (log.data.runs as number) ?? 0
+    (log) => (log.data.holes as number) ?? 0
   );
 
   return (
@@ -285,9 +285,9 @@ export default function Golfing() {
             <input
               type="number"
               className="w-full p-2 rounded bg-slate-700 text-white"
-              value={form.runs}
+              value={form.holes}
               onChange={(e) =>
-                setForm({ ...form, runs: parseInt(e.target.value || "0") })
+                setForm({ ...form, holes: parseInt(e.target.value || "0") })
               }
             />
           </div>
@@ -297,9 +297,9 @@ export default function Golfing() {
             <input
               type="number"
               className="w-full p-2 rounded bg-slate-700 text-white"
-              value={form.vertical}
+              value={form.score}
               onChange={(e) =>
-                setForm({ ...form, vertical: parseInt(e.target.value || "0") })
+                setForm({ ...form, score: parseInt(e.target.value || "0") })
               }
             />
           </div>
@@ -309,9 +309,9 @@ export default function Golfing() {
             <input
               type="number"
               className="w-full p-2 rounded bg-slate-700 text-white"
-              value={form.duration}
+              value={form.players}
               onChange={(e) =>
-                setForm({ ...form, duration: parseInt(e.target.value || "0") })
+                setForm({ ...form, players: parseInt(e.target.value || "0") })
               }
             />
           </div>
@@ -355,7 +355,7 @@ export default function Golfing() {
                         "Unknown location"}
                     </div>
                     <div className="text-sm text-gray-300">
-                      {log.data.runs} runs · {log.data.vertical?.toLocaleString()} ft vert · {log.data.duration} min
+                      {log.data.holes} holes · {log.data.score?.toLocaleString()} ft vert · {log.data.players} min
                     </div>
                     {log.data.notes && (
                       <div className="text-sm text-gray-400 mt-1 italic">
@@ -379,9 +379,9 @@ export default function Golfing() {
           onRangeChange={setRange}
           computeStats={(filtered) => [
             { label: "Total sessions", value: filtered.length },
-            { label: "Total runs", value: filtered.reduce((s, l) => s + (l.data?.runs ?? 0), 0) },
-            { label: "Total vertical", value: `${filtered.reduce((s, l) => s + (l.data?.vertical ?? 0), 0).toLocaleString()} ft` },
-            { label: "Total hours", value: (filtered.reduce((s, l) => s + (l.data?.duration ?? 0), 0) / 60).toFixed(1) },
+            { label: "Total holes", value: filtered.reduce((s, l) => s + (l.data?.holes ?? 0), 0) },
+            { label: "Total score", value: `${filtered.reduce((s, l) => s + (l.data?.score ?? 0), 0).toLocaleString()} ft` },
+            { label: "Total hours", value: (filtered.reduce((s, l) => s + (l.data?.players ?? 0), 0) / 60).toFixed(1) },
           ]}
         />
 
@@ -403,7 +403,7 @@ export default function Golfing() {
                     <div className="font-semibold">{name}</div>
                     {logs.map((log) => (
                       <div key={log.id}>
-                        {log.date} · {log.metric} runs
+                        {log.date} · {log.metric} holes
                       </div>
                     ))}
                   </div>

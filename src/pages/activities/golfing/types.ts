@@ -1,8 +1,8 @@
 export interface GolfingLogData {
   location_id: string;
-  runs?: number;
-  vertical?: number;
-  duration?: number;
+  holes?: number;
+  score?: number;
+  players?: number;
   notes?: string;
 };
 
