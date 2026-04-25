@@ -72,12 +72,12 @@ export default function Home() {
         </h2>
         {hasOutdoor ? (
           <CardGrid cols="grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {active.surfing && <SurfProgress />}
-            {active.hiking && <HikeProgress />}
             {active.running && <RunProgress />}
-            {active.snorkeling && <SnorkelingProgress />}
-            {active.skiing && <SkiingProgress />}
             {active.golfing && <GolfingProgress />}
+            {active.hiking && <HikeProgress />}
+            {active.surfing && <SurfProgress />}
+            {active.skiing && <SkiingProgress />}
+            {active.snorkeling && <SnorkelingProgress />}
           </CardGrid>
         ) : (
           <p className="text-gray-400">No outdoor activities yet.</p>
