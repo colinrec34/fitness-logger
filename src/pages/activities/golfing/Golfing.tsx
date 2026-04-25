@@ -98,7 +98,7 @@ export default function Golfing() {
 
       if (error) {
         console.error("Error fetching logs:", error);
-        setError("Failed to load ski sessions. Please refresh.");
+        setError("Failed to load Golf sessions. Please refresh.");
         setLogs([]);
       } else if (data) {
         setLogs(data);
@@ -182,7 +182,7 @@ export default function Golfing() {
 
       if (error) throw error;
 
-      alert("Ski session logged!");
+      alert("Golf session logged!");
 
       const { data: updatedLogs, error: fetchError } = await supabase
         .from("logs")
@@ -209,7 +209,7 @@ export default function Golfing() {
     <div className="flex flex-col md:flex-row gap-8 p-6">
       {/* Left Column */}
       <div className="flex-1 space-y-6">
-        <h1 className="text-3xl font-bold">Log a Ski Session</h1>
+        <h1 className="text-3xl font-bold">Log a Golf Session</h1>
         <form
           onSubmit={handleSubmit}
           className="space-y-4 bg-slate-800 p-6 rounded-xl shadow-md"
@@ -335,7 +335,7 @@ export default function Golfing() {
 
         {/* SESSION HISTORY */}
         <div className="bg-slate-800 rounded-xl p-4 max-h-[400px] overflow-y-auto shadow-md">
-          <h2 className="text-xl font-semibold mb-2">Ski Session History</h2>
+          <h2 className="text-xl font-semibold mb-2">Golf Session History</h2>
           {loading ? (
             <p className="italic text-gray-400">Loading sessions...</p>
           ) : error ? (
@@ -371,7 +371,7 @@ export default function Golfing() {
 
       {/* Right Column */}
       <div className="md:w-1/2 space-y-6">
-        <h1 className="text-3xl font-bold">Ski Statistics</h1>
+        <h1 className="text-3xl font-bold">Golf Statistics</h1>
         <StatisticsSection
           logs={logs}
           getDate={(log) => log.datetime}
