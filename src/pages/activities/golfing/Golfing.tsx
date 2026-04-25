@@ -5,9 +5,15 @@ import { MapContainer, TileLayer, Marker, Tooltip } from "react-leaflet";
 import { supabase } from "../../../api/supabaseClient";
 import { useAuth } from "../../../context/AuthContext";
 import { currentDatetimeLocal } from "../../../lib/datetimeLocal";
-import { groupLogsByLocation, FitBoundsPoints } from "../../../lib/locationUtils";
+import {
+  groupLogsByLocation,
+  FitBoundsPoints,
+} from "../../../lib/locationUtils";
 import StatisticsSection from "../../../components/StatisticsSection";
-import { filterLogsByRange, type TimeRange } from "../../../components/TimeRangeFilter";
+import {
+  filterLogsByRange,
+  type TimeRange,
+} from "../../../components/TimeRangeFilter";
 
 const ACTIVITY_ID = "8b6b6cf4-9cec-43db-926a-cce49dab38ff";
 
@@ -202,7 +208,7 @@ export default function Golfing() {
   const groupedLogsByLocation = groupLogsByLocation(
     filteredLogs,
     locations,
-    (log) => (log.data.holes as number) ?? 0
+    (log) => (log.data.holes as number) ?? 0,
   );
 
   return (
@@ -355,7 +361,9 @@ export default function Golfing() {
                         "Unknown location"}
                     </div>
                     <div className="text-sm text-gray-300">
-                      {log.data.holes} holes · {log.data.score?.toLocaleString()} holes · {log.data.players} players
+                      {log.data.holes} holes ·{" "}
+                      {log.data.score?.toLocaleString()} holes ·{" "}
+                      {log.data.players} players
                     </div>
                     {log.data.notes && (
                       <div className="text-sm text-gray-400 mt-1 italic">
@@ -377,12 +385,57 @@ export default function Golfing() {
           getDate={(log) => log.datetime}
           range={range}
           onRangeChange={setRange}
-          computeStats={(filtered) => [
-            { label: "Total sessions", value: filtered.length },
-            { label: "Total holes", value: filtered.reduce((s, l) => s + (l.data?.holes ?? 0), 0) },
-            { label: "Total score", value: `${filtered.reduce((s, l) => s + (l.data?.score ?? 0), 0).toLocaleString()}` },
-            { label: "Total hours", value: (filtered.reduce((s, l) => s + (l.data?.players ?? 0), 0) / 60).toFixed(1) },
-          ]}
+          computeStats={(filtered) => {
+            const count = filtered.length || 1;
+
+            const {
+              totalHoles,
+              totalScore,
+              totalPlayers,
+              nineHoleCount,
+              eighteenHoleCount,
+            } = filtered.reduce(
+              (acc, l) => {
+                const holes = l.data?.holes ?? 0;
+                const score = l.data?.score ?? 0;
+                const players = l.data?.players ?? 0;
+
+                acc.totalHoles += holes;
+                acc.totalScore += score;
+                acc.totalPlayers += players;
+
+                if (holes === 9) acc.nineHoleCount += 1;
+                if (holes === 18) acc.eighteenHoleCount += 1;
+
+                return acc;
+              },
+              {
+                totalHoles: 0,
+                totalScore: 0,
+                totalPlayers: 0,
+                nineHoleCount: 0,
+                eighteenHoleCount: 0,
+              },
+            );
+
+            return [
+              { label: "Total sessions", value: filtered.length },
+              { label: "9-hole sessions", value: nineHoleCount },
+              { label: "18-hole sessions", value: eighteenHoleCount },
+              {
+                label: "Average holes",
+                value: (totalHoles / count).toFixed(1),
+              },
+              {
+                label: "Average Score",
+                value: (totalScore / count).toFixed(1),
+              },
+              {
+                label: "Average Players",
+                value: (totalPlayers / count).toFixed(1),
+              },
+            ];
+          }}
         />
 
         <div className="bg-slate-800 rounded-xl overflow-hidden shadow-md">
