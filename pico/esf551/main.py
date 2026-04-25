@@ -42,6 +42,13 @@ _ADV_TYPE_SHORT_NAME = const(0x08)
 _TARGET_SERVICE_BLE_UUID = bluetooth.UUID(0xFFF0)
 _WEIGHT_NOTIFY_BLE_UUID = bluetooth.UUID(0xFFF1)
 _CONTROL_BLE_UUID = bluetooth.UUID(0xFFF2)
+_LED_OFF = const(0)
+_LED_WIFI = const(1)
+_LED_ACTIVE = const(2)
+_BLE_SESSION_TIMEOUT_MS = const(12000)
+_POST_MEASUREMENT_COOLDOWN_MS = const(15000)
+_BUTTON_PIN = const(15)
+_ARM_WINDOW_MS = const(30000)
 
 
 def format_addr(addr):
@@ -86,6 +93,9 @@ class ESF551Collector:
         self.ble.active(True)
         self.ble.irq(self._irq)
         self.led = machine.Pin("LED", machine.Pin.OUT)
+        self.button = machine.Pin(_BUTTON_PIN, machine.Pin.IN, machine.Pin.PULL_UP)
+        self.wlan = network.WLAN(network.STA_IF)
+        self.wlan.active(True)
 
         self.target_address = (
             config.SCALE_ADDRESS.upper() if config.SCALE_ADDRESS else None
@@ -105,44 +115,77 @@ class ESF551Collector:
         self.last_measurement_ms = 0
         self.scale_address = None
         self.scale_name = None
+        self.wifi_connected = False
+        self.last_wifi_attempt_ms = -60000
+        self.led_mode = _LED_OFF
+        self.led_value = 0
+        self.last_led_toggle_ms = 0
+        self.ble_session_started_ms = None
+        self.cooldown_until_ms = None
+        self.arm_until_ms = None
+        self.button_last_value = 1
+        self.posting = False
 
     def start(self):
-        self._connect_wifi()
-        self._start_scan()
+        self._ensure_wifi(force=True)
+        self._update_led()
 
     def loop_forever(self):
         while True:
-            if not self.scanning and not self.connected and not self.connecting:
+            self._ensure_wifi()
+            self._clear_cooldown_if_needed()
+            self._handle_button()
+            self._clear_arm_if_needed()
+
+            if (
+                self.wifi_connected
+                and self._is_armed()
+                and not self._in_cooldown()
+                and not self.scanning
+                and not self.connected
+                and not self.connecting
+            ):
                 self._start_scan()
+
+            self._enforce_ble_timeout()
 
             if self.pending_measurement:
                 self._handle_measurement(self.pending_measurement)
                 self.pending_measurement = None
 
+            self._update_led()
             time.sleep_ms(100)
 
-    def _connect_wifi(self):
+    def _ensure_wifi(self, force=False):
         if not config.WIFI_SSID:
             return
 
-        wlan = network.WLAN(network.STA_IF)
-        wlan.active(True)
-
-        if wlan.isconnected():
-            print("Wi-Fi already connected:", wlan.ifconfig())
+        if self.wlan.isconnected():
+            if not self.wifi_connected:
+                print("Wi-Fi connected")
+            self.wifi_connected = True
             return
 
-        print("Connecting to Wi-Fi...")
-        wlan.connect(config.WIFI_SSID, config.WIFI_PASSWORD)
+        now = time.ticks_ms()
+        if not force and time.ticks_diff(now, self.last_wifi_attempt_ms) < 10000:
+            return
 
-        for _ in range(60):
-            if wlan.isconnected():
-                print("Wi-Fi connected:", wlan.ifconfig())
+        self.last_wifi_attempt_ms = now
+        self.wifi_connected = False
+        self.wlan.disconnect()
+        self.wlan.connect(config.WIFI_SSID, config.WIFI_PASSWORD)
+        self._set_led_mode(_LED_WIFI)
+
+        for _ in range(30):
+            if self.wlan.isconnected():
+                print("Wi-Fi connected")
+                self.wifi_connected = True
                 self._sync_time()
                 return
+            self._update_led()
             time.sleep_ms(500)
 
-        print("Wi-Fi connection timed out; continuing without network upload")
+        print("Wi-Fi connection timed out; retrying")
 
     def _sync_time(self):
         if not getattr(config, "NTP_SYNC", True):
@@ -154,12 +197,11 @@ class ESF551Collector:
 
         try:
             ntptime.settime()
-            print("Clock synchronized via NTP")
         except Exception as exc:
             print("NTP sync failed:", exc)
 
     def _start_scan(self):
-        print("Scanning for ESF-551...")
+        print("Armed for weigh-in")
         self.scanning = True
         self.ble.gap_scan(config.SCAN_DURATION_MS, 30000, 30000)
 
@@ -192,25 +234,24 @@ class ESF551Collector:
 
             self.scale_address = addr_normal
             self.scale_name = name or "Unknown"
-            print("Found scale:", self.scale_name, self.scale_address, "RSSI", rssi)
+            self._set_led_mode(_LED_ACTIVE)
+            self.ble_session_started_ms = time.ticks_ms()
             self._stop_scan()
             self.connecting = True
             self.ble.gap_connect(addr_type, addr)
 
         elif event == _IRQ_SCAN_DONE:
             self.scanning = False
-            if not self.connected and not self.connecting:
-                print("Scan complete; restarting soon")
 
         elif event == _IRQ_PERIPHERAL_CONNECT:
             conn_handle, addr_type, addr = data
             self.conn_handle = conn_handle
             self.connecting = False
             self.connected = True
+            self.ble_session_started_ms = time.ticks_ms()
             self.notify_value_handle = None
             self.control_value_handle = None
             self.target_service_range = None
-            print("Connected to scale")
             self.ble.gattc_discover_services(conn_handle)
 
         elif event == _IRQ_GATTC_SERVICE_RESULT:
@@ -253,7 +294,6 @@ class ESF551Collector:
 
             cccd_handle = self.notify_value_handle + 1
             self.ble.gattc_write(self.conn_handle, cccd_handle, b"\x01\x00", 1)
-            print("Subscribed to notifications")
 
         elif event == _IRQ_GATTC_WRITE_DONE:
             conn_handle, value_handle, status = data
@@ -262,16 +302,12 @@ class ESF551Collector:
 
         elif event == _IRQ_GATTC_NOTIFY:
             conn_handle, value_handle, notify_data = data
-            self.led.on()
+            self._set_led_mode(_LED_ACTIVE)
             if value_handle != self.notify_value_handle:
-                time.sleep_ms(100)
-                self.led.off()
                 return
 
             parsed = parse_measurement(notify_data)
             if not parsed:
-                time.sleep_ms(100)
-                self.led.off()
                 return
 
             now = time.ticks_ms()
@@ -285,26 +321,22 @@ class ESF551Collector:
                 and time.ticks_diff(now, self.last_measurement_ms)
                 < config.MEASUREMENT_COOLDOWN_MS
             ):
-                time.sleep_ms(100)
-                self.led.off()
                 return
 
             self.last_measurement_signature = signature
             self.last_measurement_ms = now
             self.pending_measurement = parsed
-            time.sleep_ms(100)
-            self.led.off()
 
         elif event == _IRQ_PERIPHERAL_DISCONNECT:
             conn_handle, addr_type, addr = data
-            print("Disconnected from scale")
-            self.led.off()
             self.connected = False
             self.connecting = False
             self.conn_handle = None
             self.notify_value_handle = None
             self.control_value_handle = None
             self.target_service_range = None
+            self.ble_session_started_ms = None
+            self._set_led_mode(_LED_OFF)
 
     def _disconnect(self):
         if self.conn_handle is not None:
@@ -312,6 +344,10 @@ class ESF551Collector:
                 self.ble.gap_disconnect(self.conn_handle)
             except OSError:
                 pass
+        else:
+            self.connected = False
+            self.connecting = False
+            self.ble_session_started_ms = None
 
     def _handle_measurement(self, measurement):
         weight_kg = measurement["weight_kg"]
@@ -345,6 +381,10 @@ class ESF551Collector:
 
         print("Measurement:", json.dumps(payload))
         self._post_webhook(payload)
+        self.cooldown_until_ms = time.ticks_add(
+            time.ticks_ms(), _POST_MEASUREMENT_COOLDOWN_MS
+        )
+        self.arm_until_ms = None
         self._disconnect()
 
     def _post_webhook(self, payload):
@@ -355,26 +395,119 @@ class ESF551Collector:
             print("urequests not available; skipping webhook upload")
             return
 
-        wlan = network.WLAN(network.STA_IF)
-        if not wlan.isconnected():
+        if not self.wlan.isconnected():
+            self.wifi_connected = False
             print("Wi-Fi not connected; skipping webhook upload")
             return
 
         response = None
+        self.posting = True
         try:
             headers = {"Content-Type": "application/json"}
             headers.update(config.WEBHOOK_HEADERS)
+            self._blink_blocking(2, 100)
             response = urequests.post(
                 config.WEBHOOK_URL,
                 data=json.dumps(payload),
                 headers=headers,
             )
-            print("Webhook response:", response.status_code)
+            if response.status_code != 200:
+                print("Webhook response:", response.status_code)
         except Exception as exc:
             print("Webhook upload failed:", exc)
         finally:
+            self.posting = False
             if response is not None:
                 response.close()
+
+    def _enforce_ble_timeout(self):
+        if self.ble_session_started_ms is None:
+            return
+
+        if not self.connecting and not self.connected:
+            self.ble_session_started_ms = None
+            return
+
+        if (
+            time.ticks_diff(time.ticks_ms(), self.ble_session_started_ms)
+            >= _BLE_SESSION_TIMEOUT_MS
+        ):
+            print("BLE session timed out; resetting")
+            self._disconnect()
+
+    def _in_cooldown(self):
+        if self.cooldown_until_ms is None:
+            return False
+        return time.ticks_diff(self.cooldown_until_ms, time.ticks_ms()) > 0
+
+    def _clear_cooldown_if_needed(self):
+        if self.cooldown_until_ms is None:
+            return
+        if not self._in_cooldown():
+            self.cooldown_until_ms = None
+
+    def _is_armed(self):
+        if self.arm_until_ms is None:
+            return False
+        return time.ticks_diff(self.arm_until_ms, time.ticks_ms()) > 0
+
+    def _clear_arm_if_needed(self):
+        if self.arm_until_ms is None:
+            return
+        if not self._is_armed():
+            self.arm_until_ms = None
+            if self.scanning:
+                self._stop_scan()
+
+    def _handle_button(self):
+        value = self.button.value()
+        if self.button_last_value == 1 and value == 0:
+            if self.wifi_connected and not self._in_cooldown():
+                self.arm_until_ms = time.ticks_add(time.ticks_ms(), _ARM_WINDOW_MS)
+                print("Button pressed; scan window opened")
+                self._blink_blocking(1, 75)
+        self.button_last_value = value
+
+    def _set_led_mode(self, mode):
+        if self.led_mode != mode:
+            self.led_mode = mode
+            self.last_led_toggle_ms = time.ticks_ms()
+            self.led_value = 0
+            self.led.off()
+
+    def _update_led(self):
+        now = time.ticks_ms()
+
+        desired_mode = _LED_OFF
+        if config.WIFI_SSID and not self.wifi_connected:
+            desired_mode = _LED_WIFI
+        elif self.connected or self.connecting or self.posting:
+            desired_mode = _LED_ACTIVE
+
+        self._set_led_mode(desired_mode)
+
+        if self.led_mode == _LED_OFF:
+            if self.led_value:
+                self.led.off()
+                self.led_value = 0
+            return
+
+        interval_ms = 400 if self.led_mode == _LED_WIFI else 100
+        if time.ticks_diff(now, self.last_led_toggle_ms) >= interval_ms:
+            self.last_led_toggle_ms = now
+            if self.led_value:
+                self.led.off()
+                self.led_value = 0
+            else:
+                self.led.on()
+                self.led_value = 1
+
+    def _blink_blocking(self, cycles, interval_ms):
+        for _ in range(cycles):
+            self.led.on()
+            time.sleep_ms(interval_ms)
+            self.led.off()
+            time.sleep_ms(interval_ms)
 
 
 def main():
