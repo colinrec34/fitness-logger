@@ -1,5 +1,7 @@
-export interface GenericLogData {
+export interface GolfingLogData {
   location_id: string;
+  runs?: number;
+  vertical?: number;
   duration?: number;
   notes?: string;
 };
@@ -20,7 +22,7 @@ export interface LogRow {
   activity_id: string;
   datetime: string;
   location_id?: string;
-  data: GenericLogData;
+  data: GolfingLogData;
   created_at?: string;
   updated_at?: string;
 }
