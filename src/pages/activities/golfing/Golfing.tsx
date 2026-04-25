@@ -419,12 +419,12 @@ export default function Golfing() {
             );
 
             return [
-              { label: "Total sessions", value: filtered.length },
+              { label: "Total rounds", value: filtered.length },
               { label: "9-hole sessions", value: nineHoleCount },
               { label: "18-hole sessions", value: eighteenHoleCount },
               {
                 label: "Total holes",
-                value: (totalHoles).toFixed(1),
+                value: (totalHoles),
               },
               {
                 label: "Average Score",
