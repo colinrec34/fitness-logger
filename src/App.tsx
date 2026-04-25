@@ -24,12 +24,12 @@ import Golfing from "./pages/activities/golfing/Golfing"
 const activityComponents: Record<string, React.FC> = {
   weight: Weight,
   lifting: Lifting,
+  running: Running,
+  golfing: Golfing,
   hiking: Hiking,
   surfing: Surfing,
-  running: Running,
-  snorkeling: Snorkeling,
   skiing: Skiing,
-  golfing: Golfing
+  snorkeling: Snorkeling,
 };
 
 export default function App() {
