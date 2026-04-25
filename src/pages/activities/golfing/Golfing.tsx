@@ -423,8 +423,8 @@ export default function Golfing() {
               { label: "9-hole sessions", value: nineHoleCount },
               { label: "18-hole sessions", value: eighteenHoleCount },
               {
-                label: "Average holes",
-                value: (totalHoles / count).toFixed(1),
+                label: "Total holes",
+                value: (totalHoles).toFixed(1),
               },
               {
                 label: "Average Score",
