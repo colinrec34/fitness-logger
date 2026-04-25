@@ -125,10 +125,10 @@ export default function GolfingProgress() {
               <strong>Holes:</strong> {latest.data.holes}
             </li>
             <li>
-              <strong>Score:</strong> {latest.data.score?.toLocaleString()} ft
+              <strong>Score:</strong> {latest.data.score?.toLocaleString()}
             </li>
             <li>
-              <strong>Players:</strong> {latest.data.players} min
+              <strong>Players:</strong> {latest.data.players}
             </li>
           </ul>
         </>

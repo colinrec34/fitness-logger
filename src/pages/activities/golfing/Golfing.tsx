@@ -281,7 +281,7 @@ export default function Golfing() {
           </div>
 
           <div>
-            <label className="block mb-1">Runs</label>
+            <label className="block mb-1">Holes</label>
             <input
               type="number"
               className="w-full p-2 rounded bg-slate-700 text-white"
@@ -293,7 +293,7 @@ export default function Golfing() {
           </div>
 
           <div>
-            <label className="block mb-1">Vertical (ft)</label>
+            <label className="block mb-1">Score</label>
             <input
               type="number"
               className="w-full p-2 rounded bg-slate-700 text-white"
@@ -305,7 +305,7 @@ export default function Golfing() {
           </div>
 
           <div>
-            <label className="block mb-1">Duration (minutes)</label>
+            <label className="block mb-1">Players</label>
             <input
               type="number"
               className="w-full p-2 rounded bg-slate-700 text-white"
@@ -355,7 +355,7 @@ export default function Golfing() {
                         "Unknown location"}
                     </div>
                     <div className="text-sm text-gray-300">
-                      {log.data.holes} holes · {log.data.score?.toLocaleString()} ft vert · {log.data.players} min
+                      {log.data.holes} holes · {log.data.score?.toLocaleString()} holes · {log.data.players} players
                     </div>
                     {log.data.notes && (
                       <div className="text-sm text-gray-400 mt-1 italic">
@@ -380,7 +380,7 @@ export default function Golfing() {
           computeStats={(filtered) => [
             { label: "Total sessions", value: filtered.length },
             { label: "Total holes", value: filtered.reduce((s, l) => s + (l.data?.holes ?? 0), 0) },
-            { label: "Total score", value: `${filtered.reduce((s, l) => s + (l.data?.score ?? 0), 0).toLocaleString()} ft` },
+            { label: "Total score", value: `${filtered.reduce((s, l) => s + (l.data?.score ?? 0), 0).toLocaleString()}` },
             { label: "Total hours", value: (filtered.reduce((s, l) => s + (l.data?.players ?? 0), 0) / 60).toFixed(1) },
           ]}
         />
