@@ -122,13 +122,13 @@ export default function GolfingProgress() {
 
           <ul className="text-gray-300 text-sm space-y-1">
             <li>
-              <strong>Runs:</strong> {latest.data.runs}
+              <strong>Holes:</strong> {latest.data.holes}
             </li>
             <li>
-              <strong>Vertical:</strong> {latest.data.vertical?.toLocaleString()} ft
+              <strong>Score:</strong> {latest.data.score?.toLocaleString()} ft
             </li>
             <li>
-              <strong>Duration:</strong> {latest.data.duration} min
+              <strong>Players:</strong> {latest.data.players} min
             </li>
           </ul>
         </>
