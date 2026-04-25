@@ -13,7 +13,7 @@ const ACTIVITY_ID = "8b6b6cf4-9cec-43db-926a-cce49dab38ff";
 
 import type { LocationRow, LogRow } from "./types";
 
-export default function Skiing() {
+export default function Golfing() {
   const { user } = useAuth();
   const [showAddLocation, setShowAddLocation] = useState(false);
   const [range, setRange] = useState<TimeRange>("Max");

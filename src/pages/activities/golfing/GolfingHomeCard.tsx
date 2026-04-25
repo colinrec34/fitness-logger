@@ -17,7 +17,7 @@ function FitToMarker({ coordinates }: { coordinates: [number, number] }) {
   return null;
 }
 
-export default function SkiingProgress() {
+export default function GolfingProgress() {
   const [userId, setUserId] = useState<string | null>(null);
   const [latest, setLatest] = useState<LogRow>();
   const [latestLocation, setLatestLocation] = useState<LocationRow>();
