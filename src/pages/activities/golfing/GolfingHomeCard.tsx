@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import { format, formatDistanceToNow } from "date-fns";
-import Card from "../../../components/Card"
+import Card from "../../../components/Card";
 
 import { supabase } from "../../../api/supabaseClient";
-
-// Put the activity ID from the activites table here
 const ACTIVITY_ID = "8b6b6cf4-9cec-43db-926a-cce49dab38ff";
 
 import type { LocationRow, LogRow } from "./types";
@@ -19,7 +17,7 @@ function FitToMarker({ coordinates }: { coordinates: [number, number] }) {
   return null;
 }
 
-export default function GenericingHomeCard() {
+export default function SkiingProgress() {
   const [userId, setUserId] = useState<string | null>(null);
   const [latest, setLatest] = useState<LogRow>();
   const [latestLocation, setLatestLocation] = useState<LocationRow>();
@@ -62,6 +60,7 @@ export default function GenericingHomeCard() {
         const { data: location, error: locationError } = await supabase
           .from("locations")
           .select("*")
+          .eq("user_id", userId)
           .eq("id", log.location_id)
           .single();
 
@@ -85,7 +84,7 @@ export default function GenericingHomeCard() {
 
   return (
     <Card
-      title={`🤿 ${latestLocation?.name ?? "Last Genericing Session"}`}
+      title={`⛷️ ${latestLocation?.name ? ` - ${latestLocation.name}` : ""}`}
       subtitle={
         <span className="text-gray-400">
           {formattedDatetime} · {relativeDate}
@@ -93,7 +92,7 @@ export default function GenericingHomeCard() {
       }
       footer={
         latest?.data.notes && (
-          <p className="pt-2 text-gray-400 italic">“{latest.data.notes}”</p>
+          <p className="pt-2 text-gray-400 italic">"{latest.data.notes}"</p>
         )
       }
     >
@@ -122,6 +121,12 @@ export default function GenericingHomeCard() {
           </div>
 
           <ul className="text-gray-300 text-sm space-y-1">
+            <li>
+              <strong>Runs:</strong> {latest.data.runs}
+            </li>
+            <li>
+              <strong>Vertical:</strong> {latest.data.vertical?.toLocaleString()} ft
+            </li>
             <li>
               <strong>Duration:</strong> {latest.data.duration} min
             </li>
