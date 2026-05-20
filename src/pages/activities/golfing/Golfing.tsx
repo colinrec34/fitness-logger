@@ -362,7 +362,7 @@ export default function Golfing() {
                     </div>
                     <div className="text-sm text-gray-300">
                       {log.data.holes} holes ·{" "}
-                      {log.data.score?.toLocaleString()} holes ·{" "}
+                      {log.data.score?.toLocaleString()} strokes ·{" "}
                       {log.data.players} players
                     </div>
                     {log.data.notes && (
