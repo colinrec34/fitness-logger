@@ -93,7 +93,7 @@ export default function Hiking() {
         .select("*")
         .eq("user_id", user.id)
         .eq("activity_id", ACTIVITY_ID)
-        .order("datetime", { ascending: true });
+        .order("datetime", { ascending: false });
 
       if (error) {
         console.error("Error fetching logs:", error);
