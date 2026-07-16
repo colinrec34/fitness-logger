@@ -17,7 +17,6 @@ import StatisticsSection from "../../../components/StatisticsSection";
 import { filterLogsByRange, type TimeRange } from "../../../components/TimeRangeFilter";
 
 const ACTIVITY_ID = "d3555da1-b932-42e2-9cbb-0908aaf1c73a";
-const STRAVA_SYNC_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/strava-sync`;
 
 import type { LogRow } from "./types";
 
@@ -71,27 +70,6 @@ export default function Running() {
       if (!user) return;
       setLoading(true);
       setError(null);
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-
-      if (!accessToken) {
-        console.warn("No session or access token found.");
-        setLoading(false);
-        return;
-      }
-
-      const syncRes = await fetch(STRAVA_SYNC_URL, {
-        credentials: "include",
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      if (!syncRes.ok) {
-        console.error("Strava sync failed:", await syncRes.text());
-      } else {
-        const syncResult = await syncRes.json();
-        console.log("Strava sync success:", syncResult);
-      }
 
       const { data, error } = await supabase
         .from("logs")

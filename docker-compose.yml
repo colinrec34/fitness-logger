@@ -1,0 +1,48 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3002:3000"
+    environment:
+      DATABASE_URL: postgresql://fitness:${POSTGRES_PASSWORD:-password}@postgres:5432/fitness
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_EXPIRES_IN: 30d
+      NODE_ENV: production
+      PORT: 3000
+      CLIENT_URL: ${CLIENT_URL:-}
+      # ESF-551 smart-scale webhook (POST /api/esf551)
+      ESF551_WEBHOOK_TOKEN: ${ESF551_WEBHOOK_TOKEN:-}
+      ESF551_USER_ID: ${ESF551_USER_ID:-}
+      ESF551_WEIGHT_ACTIVITY_ID: ${ESF551_WEIGHT_ACTIVITY_ID:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: fitness
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: fitness
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fitness -d fitness"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data:

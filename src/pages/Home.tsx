@@ -36,7 +36,7 @@ export default function Home() {
       }
 
       const activeFlags: ActivityFlags = {};
-      data.forEach((activity) => {
+      data.forEach((activity: { slug: string; is_active: boolean }) => {
         activeFlags[activity.slug] = activity.is_active;
       });
       setActive(activeFlags);

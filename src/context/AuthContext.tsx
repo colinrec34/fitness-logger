@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import type { User } from "@supabase/supabase-js";
+import type { User } from "../api/supabaseClient";
 import { supabase } from "../api/supabaseClient";
 
 export interface Activity {

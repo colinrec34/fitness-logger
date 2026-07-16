@@ -1,0 +1,75 @@
+// Mirrors the tables migrated from Supabase. Field names are kept snake_case so
+// API rows match what the frontend already expects (activity_id, datetime, etc.).
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String     @id @default(uuid()) @db.Uuid
+  email      String     @unique
+  password   String // bcrypt hash (migrated from Supabase auth.users.encrypted_password)
+  created_at DateTime   @default(now()) @db.Timestamptz(6)
+  activities Activity[]
+  logs       Log[]
+  locations  Location[]
+
+  @@map("users")
+}
+
+model Activity {
+  id            String     @id @default(uuid()) @db.Uuid
+  user_id       String     @db.Uuid
+  slug          String
+  display_name  String
+  is_active     Boolean    @default(true)
+  placement_row Int        @default(0)
+  placement_col Int        @default(0)
+  created_at    DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime   @default(now()) @updatedAt @db.Timestamptz(6)
+  user          User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  logs          Log[]
+  locations     Location[]
+
+  @@unique([user_id, slug])
+  @@unique([user_id, placement_row, placement_col])
+  @@map("activities")
+}
+
+model Location {
+  id          String   @id @default(uuid()) @db.Uuid
+  user_id     String   @db.Uuid
+  activity_id String   @db.Uuid
+  name        String
+  lat         Decimal? @db.Decimal
+  lon         Decimal? @db.Decimal
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  activity    Activity @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  logs        Log[]
+
+  @@unique([user_id, activity_id, name])
+  @@map("locations")
+}
+
+model Log {
+  id          String    @id @default(uuid()) @db.Uuid
+  user_id     String    @db.Uuid
+  activity_id String    @db.Uuid
+  location_id String?   @db.Uuid
+  datetime    DateTime  @db.Timestamptz(6)
+  data        Json
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  activity    Activity  @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  location    Location? @relation(fields: [location_id], references: [id], onDelete: SetNull)
+
+  @@unique([activity_id, datetime])
+  @@unique([user_id, activity_id, datetime])
+  @@map("logs")
+}
