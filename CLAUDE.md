@@ -15,7 +15,7 @@ There are no tests.
 
 ## Architecture
 
-**React 19 + TypeScript SPA** deployed on Vercel. Supabase is the backend (auth + Postgres). No server-side rendering.
+**React 19 + TypeScript SPA** with a self-hosted **Express + Prisma + PostgreSQL** backend (JWT auth), served as one Docker container (Express serves the built SPA + `/api`). The frontend talks to the API through a thin shim in `src/api/supabaseClient.ts` that preserves the old `supabase.from(...)`/`supabase.auth.*` call sites, so the activity pages are unchanged. All endpoints are scoped to the JWT user (replacing the former Supabase RLS). No server-side rendering.
 
 ### Auth and activity registration
 
@@ -36,7 +36,7 @@ All writes use `upsert` with `onConflict: "activity_id,datetime"` so re-submitti
 
 ### Two activity patterns
 
-**Strava-synced** (running, hiking): Read-only pages. On mount, they call the `strava-sync` Supabase edge function with the user's JWT, which syncs new activities from Strava into `logs`. Data includes polyline-encoded routes rendered with react-leaflet + `@mapbox/polyline`.
+**Read-only route pages** (running, hiking): display run/hike logs from the DB with polyline-encoded routes rendered via react-leaflet + `@mapbox/polyline`. (These previously auto-synced from Strava via a Supabase edge function; the Strava sync was removed when the API was blocked.)
 
 **Manual-entry with locations** (surfing, skiing, golfing, snorkeling): Two-column layout — left is a form + session history, right is `StatisticsSection` + a Leaflet map with markers per saved location. Changing the date picker pre-populates the form from any existing log for that day. Locations are stored in the `locations` table and selected via dropdown; new ones can be added inline with lat/lon.
 
@@ -49,18 +49,16 @@ All writes use `upsert` with `onConflict: "activity_id,datetime"` so re-submitti
 - `groupLogsByLocation` / `FitBoundsPoints` (`src/lib/locationUtils.tsx`) — groups logs by their `location_id` for map marker tooltips; `FitBoundsPoints` auto-fits a Leaflet map to a set of points
 - `currentDatetimeLocal` (`src/lib/datetimeLocal.ts`) — returns current datetime formatted for `<input type="datetime-local">`
 
-### Vercel API function
+### ESF-551 scale webhook
 
-`api/esf551.ts` — serverless endpoint that accepts a POST from a Raspberry Pi Pico W running MicroPython (`pico/esf551/`). The Pico connects to an Etekcity ESF-551 smart scale via BLE and POSTs weight readings here, which are written directly to Supabase using the service role key. Authenticated via a shared bearer token (`ESF551_WEBHOOK_TOKEN` env var).
+`server/src/routes/esf551.js` — Express route (`POST /api/esf551`) that accepts weight readings from a Raspberry Pi Pico W running MicroPython (`pico/esf551/`), which reads an Etekcity ESF-551 smart scale over BLE. Writes a weight log via Prisma. Authenticated via a shared bearer token (`ESF551_WEBHOOK_TOKEN`).
 
-### Environment variables
+### Environment variables (server)
 
 | Variable | Used by |
 |---|---|
-| `VITE_SUPABASE_URL` | Frontend + `api/esf551.ts` fallback |
-| `VITE_SUPABASE_ANON_KEY` | Frontend |
-| `SUPABASE_URL` | `api/esf551.ts` (preferred) |
-| `SUPABASE_SERVICE_ROLE_KEY` | `api/esf551.ts` |
-| `ESF551_WEBHOOK_TOKEN` | `api/esf551.ts` |
-| `ESF551_USER_ID` | `api/esf551.ts` |
+| `DATABASE_URL` | Prisma / Postgres connection |
+| `JWT_SECRET` / `JWT_EXPIRES_IN` | Token signing |
+| `ESF551_WEBHOOK_TOKEN` | `routes/esf551.js` (bearer token) |
+| `ESF551_USER_ID` | `routes/esf551.js` (target user) |
 | `ESF551_WEIGHT_ACTIVITY_ID` | `api/esf551.ts` (optional, has default) |

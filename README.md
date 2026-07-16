@@ -1,12 +1,10 @@
 # Fitness Logger 🏋️‍♂️
 
-A lightweight and responsive fitness logging app that tracks my weight and lifting progress, as well as my outdoor activity sessions (surfing, hiking, running, and snorkeling). Built with **React**, **Supabase**, and **Tailwind CSS**, it features session history, statistics, and location-based visualization via interactive maps.
-
-It also integrates with the **Strava API** to automatically sync and display activities logged on Strava, making it easy to combine manual and Strava logged data in one place.
+A lightweight and responsive fitness logging app that tracks my weight and lifting progress, as well as my outdoor activity sessions (surfing, hiking, running, and snorkeling). Built with **React**, a self-hosted **Express + PostgreSQL** backend, and **Tailwind CSS**, it features session history, statistics, and location-based visualization via interactive maps.
 
 ## Features
 
-- 🔐 Authentication via Supabase
+- 🔐 JWT authentication
 - 📓 Logs for six different activities: weight tracking, weightlifting, surfing, hiking, running, and snorkeling
 - 📍 View outdoor activities on a map with React-Leaflet + OpenStreetMap
 - 📈 Analyze activity trends with historical statistics
@@ -15,10 +13,9 @@ It also integrates with the **Strava API** to automatically sync and display act
 ## Tech Stack
 
 - **Frontend**: React + Vite + Tailwind CSS
-- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
+- **Backend**: Express + Prisma + PostgreSQL (self-hosted)
 - **Map**: React-Leaflet + OpenStreetMap
-- **Third-Party Integration**: Strava API
-- **Deployment**: Vercel
+- **Deployment**: Docker (self-hosted, `git push` to deploy)
 
 ## Getting Started
 
@@ -34,16 +31,16 @@ cd fitness-logger
 npm install
 ```
 
-### 3. Define environment variables
+### 3. Define environment variables (server)
 ```
-VITE_SUPABASE_URL=your-supabase-url
-VITE_SUPABASE_ANON_KEY=your-anon-key
+DATABASE_URL=postgresql://fitness:password@localhost:5432/fitness
+JWT_SECRET=your-secret
+JWT_EXPIRES_IN=30d
 
-# Optional: required for the ESF-551 webhook endpoint
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+# Optional: ESF-551 smart-scale webhook (POST /api/esf551)
 ESF551_WEBHOOK_TOKEN=shared-secret-for-pico-webhook
 ESF551_USER_ID=target-user-id-for-weight-logs
-ESF551_WEIGHT_ACTIVITY_ID=optional-weight-activity-id
+ESF551_WEIGHT_ACTIVITY_ID=weight-activity-id
 ```
 
 ### 4. Start Local Dev Server
@@ -54,9 +51,9 @@ npm run dev
 ## Project Structure
 ```
 src/
-├── api/              # Supabase client + API utilities
+├── api/              # API client (supabaseClient.ts: shim over the REST API)
 ├── components/       # Reusable UI elements
-├── lib/              # Supabase api tools
+├── lib/              # helpers
 ├── pages/            # Activity pages (lifting, surf, etc.) and Home/Login pages
 ├── App.tsx           # App entry point
 └── main.tsx          # Vite entry file

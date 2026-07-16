@@ -44,12 +44,10 @@ Successful measurements are printed as JSON, for example:
 
 If you set `WEBHOOK_URL`, the Pico W will POST the same JSON payload after a stable reading.
 
-This repo now includes a matching Vercel endpoint at `/api/esf551`.
+This repo includes a matching Express endpoint at `POST /api/esf551` (`server/src/routes/esf551.js`).
 
 Required server environment variables:
 
-- `SUPABASE_URL` or `VITE_SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
 - `ESF551_WEBHOOK_TOKEN`
 - `ESF551_USER_ID`
 
@@ -61,7 +59,7 @@ Optional server environment variable:
 The Pico should send:
 
 ```python
-WEBHOOK_URL = "https://your-app.vercel.app/api/esf551"
+WEBHOOK_URL = "http://fitness.home/api/esf551"
 WEBHOOK_HEADERS = {
     "Authorization": "Bearer your-shared-webhook-token",
 }
@@ -86,7 +84,6 @@ This implementation is intentionally narrow:
 
 - it only handles ESF-551 stable measurement packets
 - it does not yet do retries around characteristic discovery failures
-- it does not yet log directly to Supabase
 - it only uses the unit write command if `PREFERRED_UNIT` is set
 
 ## Known Risk

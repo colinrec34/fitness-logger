@@ -15,7 +15,7 @@ PREFERRED_UNIT = None
 
 # Optional webhook for forwarding measurements.
 # Leave WEBHOOK_URL = None to only print measurements over serial.
-WEBHOOK_URL = "https://your-app.vercel.app/api/esf551"
+WEBHOOK_URL = "http://fitness.home/api/esf551"
 WEBHOOK_HEADERS = {
     "Authorization": "Bearer your-shared-webhook-token",
 }
