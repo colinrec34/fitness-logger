@@ -10,6 +10,8 @@ import SurfProgress from "./activities/surfing/SurfingHomeCard";
 import SnorkelingProgress from "./activities/snorkeling/SnorkelingHomeCard";
 import SkiingProgress from "./activities/skiing/SkiingHomeCard";
 import GolfingProgress from "./activities/golfing/GolfingHomeCard";
+import BasketballProgress from "./activities/basketball/BasketballHomeCard";
+import VolleyballProgress from "./activities/volleyball/VolleyballHomeCard";
 
 import CardGrid from "../components/CardGrid";
 
@@ -48,7 +50,8 @@ export default function Home() {
   const hasProgress = active.weight || active.lifting;
 
   const hasOutdoor =
-    active.surfing || active.hiking || active.running || active.snorkeling || active.skiing || active.golfing;
+    active.surfing || active.hiking || active.running || active.snorkeling || active.skiing || active.golfing ||
+    active.basketball || active.volleyball;
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 max-w-screen-xl mx-auto">
@@ -78,6 +81,8 @@ export default function Home() {
             {active.surfing && <SurfProgress />}
             {active.skiing && <SkiingProgress />}
             {active.snorkeling && <SnorkelingProgress />}
+            {active.basketball && <BasketballProgress />}
+            {active.volleyball && <VolleyballProgress />}
           </CardGrid>
         ) : (
           <p className="text-gray-400">No outdoor activities yet.</p>
