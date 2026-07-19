@@ -20,8 +20,9 @@ import math
 import os
 import sys
 import time
+import re
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -147,19 +148,47 @@ def parse_gpx(gpx_bytes):
     return points, start, end, distance, gain
 
 
+def parse_iso(value):
+    if not isinstance(value, str):
+        return None
+    try:
+        # Normalize Strava's "+0000" offset for older fromisoformat parsers.
+        return datetime.fromisoformat(re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", value.replace("Z", "+00:00")))
+    except ValueError:
+        return None
+
+
+def raw_num(model, key):
+    v = model.get(key)
+    return float(v) if isinstance(v, (int, float)) and math.isfinite(v) else None
+
+
 def to_workout(model, kind, gpx_bytes):
-    points, start, end, distance, gain = parse_gpx(gpx_bytes)
+    """Strava's *_raw listing fields are authoritative (they match what Strava
+    displays and exist even for GPS-less activities); GPX supplies the route,
+    and is the fallback for metrics if the raw fields ever disappear."""
+    points, g_start, g_end, g_dist, g_gain = parse_gpx(gpx_bytes) if gpx_bytes else ([], None, None, 0.0, 0.0)
+
+    start = parse_iso(model.get("start_time")) or g_start
     if start is None:
         return None
+    elapsed = raw_num(model, "elapsed_time_raw")
+    if elapsed is None and g_start is not None and g_end is not None:
+        elapsed = (g_end - g_start).total_seconds()
+    end = start + timedelta(seconds=elapsed) if elapsed else (g_end or start)
+    duration = raw_num(model, "moving_time_raw") or elapsed or 0
+
+    distance = raw_num(model, "distance_raw")
+    gain = raw_num(model, "elevation_gain_raw")
     return {
         "id": f"strava-{model['id']}",
         "name": model.get("name") or kind,
         "type": kind,
         "start": start.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S +0000"),
         "end": end.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S +0000"),
-        "duration": (end - start).total_seconds(),
-        "distance": {"qty": round(distance, 1), "units": "m"},
-        "elevationUp": {"qty": round(gain, 1), "units": "m"},
+        "duration": duration,
+        "distance": {"qty": round(distance if distance is not None else g_dist, 1), "units": "m"},
+        "elevationUp": {"qty": round(gain if gain is not None else g_gain, 1), "units": "m"},
         "route": [{"lat": lat, "lon": lon} for lat, lon in points],
     }
 
@@ -189,18 +218,20 @@ def sync(session, state):
         new = [m for m in models if "id" in m and str(m["id"]) not in state["ids"]]
         for model in new:
             aid = str(model["id"])
-            kind = classify(model.get("type") or model.get("display_type"))
+            kind = classify(model.get("sport_type") or model.get("type") or model.get("display_type"))
             if kind is None:
-                log.info("activity %s (%s): skipping type %r", aid, model.get("name"), model.get("type"))
+                log.info("activity %s (%s): skipping type %r", aid, model.get("name"), model.get("sport_type") or model.get("display_type"))
                 state["ids"].add(aid)
                 save_state(state)
                 continue
 
-            time.sleep(REQUEST_DELAY)
-            gpx = fetch_gpx(session, aid)
-            workout = to_workout(model, kind, gpx) if gpx else None
+            gpx = None
+            if model.get("has_latlng") is not False:
+                time.sleep(REQUEST_DELAY)
+                gpx = fetch_gpx(session, aid)
+            workout = to_workout(model, kind, gpx)
             if workout is None:
-                log.warning("activity %s (%s): no usable GPX, skipping", aid, model.get("name"))
+                log.warning("activity %s (%s): no start time in listing or GPX, skipping", aid, model.get("name"))
                 state["ids"].add(aid)
                 save_state(state)
                 continue
