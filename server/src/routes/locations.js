@@ -39,6 +39,9 @@ router.post('/', async (req, res, next) => {
     })
     res.status(201).json(shape(location))
   } catch (err) {
+    if (err?.code === 'P2002') {
+      return res.status(409).json({ error: 'A location with that name already exists for this activity' })
+    }
     next(err)
   }
 })

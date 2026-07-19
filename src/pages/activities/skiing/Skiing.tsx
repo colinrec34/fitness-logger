@@ -51,9 +51,11 @@ export default function Skiing() {
 
       if (error) throw error;
 
+      setForm((f) => ({ ...f, location: newLocationName }));
       setNewLocationName("");
       setNewLat("");
       setNewLon("");
+      setShowAddLocation(false);
       const { data } = await supabase
         .from("locations")
         .select("*")
@@ -62,7 +64,7 @@ export default function Skiing() {
       if (data) setLocations(data);
     } catch (err) {
       console.error("Failed to add location:", err);
-      alert("Error adding location.");
+      alert(err instanceof Error ? err.message : "Error adding location.");
     }
   }
 
