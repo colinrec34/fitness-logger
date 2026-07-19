@@ -23,6 +23,9 @@ There are no tests.
 
 1. **Navbar** — `Navbar.tsx` sorts and renders links from `activities` ordered by `placement_row`/`placement_col`
 2. **Routes** — `App.tsx` dynamically registers a `<Route>` per active activity slug, mapping each slug to its component via the `activityComponents` record
+3. **Home cards** — `Home.tsx` renders dashboard cards from the same sorted list via its `cardComponents` record
+
+The `/settings` page (`src/pages/Settings.tsx`) reorders activities in the UI: it calls `PUT /api/activities/order` with the full slug list, which renumbers placements to `row=index, col=0` in a transaction (shifting rows first to dodge the `(user_id, placement_row, placement_col)` unique constraint), then refreshes `AuthContext` so navbar and cards update immediately.
 
 This means adding a new activity requires: a row in the `activities` table, a component registered in `activityComponents`, and a hardcoded `ACTIVITY_ID` UUID in that component matching the DB row.
 

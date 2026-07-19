@@ -10,6 +10,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 
 import Login from "./pages/Login";
 import Home from "./pages/Home";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 import Weight from "./pages/activities/weight/Weight";
@@ -58,6 +59,14 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <Home />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <Settings />
                     </ProtectedRoute>
                   }
                 />

@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../api/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 
 import WeightProgress from "./activities/weight/WeightHomeCard";
@@ -15,43 +13,35 @@ import VolleyballProgress from "./activities/volleyball/VolleyballHomeCard";
 
 import CardGrid from "../components/CardGrid";
 
-type ActivityFlags = {
-  [key: string]: boolean;
+const cardComponents: Record<string, React.FC> = {
+  weight: WeightProgress,
+  lifting: LiftProgress,
+  running: RunProgress,
+  golfing: GolfingProgress,
+  hiking: HikeProgress,
+  surfing: SurfProgress,
+  skiing: SkiingProgress,
+  snorkeling: SnorkelingProgress,
+  basketball: BasketballProgress,
+  volleyball: VolleyballProgress,
 };
 
+const progressSlugs = new Set(["weight", "lifting"]);
+
 export default function Home() {
-  const { user } = useAuth();
-  const [active, setActive] = useState<ActivityFlags>({});
+  const { activities } = useAuth();
 
-  useEffect(() => {
-    if (!user) return;
-
-    async function fetchActiveActivities() {
-      const { data, error } = await supabase
-        .from("activities")
-        .select("slug, is_active")
-        .eq("user_id", user!.id);
-
-      if (error) {
-        console.error("Failed to fetch activities:", error);
-        return;
+  const sorted = activities
+    .filter((a) => a.is_active && cardComponents[a.slug])
+    .sort((a, b) => {
+      if (a.placement_row === b.placement_row) {
+        return a.placement_col - b.placement_col;
       }
+      return a.placement_row - b.placement_row;
+    });
 
-      const activeFlags: ActivityFlags = {};
-      data.forEach((activity: { slug: string; is_active: boolean }) => {
-        activeFlags[activity.slug] = activity.is_active;
-      });
-      setActive(activeFlags);
-    }
-
-    fetchActiveActivities();
-  }, [user]);
-
-  const hasProgress = active.weight || active.lifting;
-
-  const hasOutdoor =
-    active.surfing || active.hiking || active.running || active.snorkeling || active.skiing || active.golfing ||
-    active.basketball || active.volleyball;
+  const progress = sorted.filter((a) => progressSlugs.has(a.slug));
+  const outdoor = sorted.filter((a) => !progressSlugs.has(a.slug));
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 max-w-screen-xl mx-auto">
@@ -59,10 +49,12 @@ export default function Home() {
         <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-white">
           📈 Your Progress
         </h2>
-        {hasProgress ? (
+        {progress.length > 0 ? (
           <CardGrid cols="grid-cols-1 md:grid-cols-2 gap-4">
-            {active.weight && <WeightProgress />}
-            {active.lifting && <LiftProgress />}
+            {progress.map((a) => {
+              const Card = cardComponents[a.slug];
+              return <Card key={a.slug} />;
+            })}
           </CardGrid>
         ) : (
           <p className="text-gray-400">No progress activities yet.</p>
@@ -73,16 +65,12 @@ export default function Home() {
         <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-white">
           🌲 Latest Outdoor Activity
         </h2>
-        {hasOutdoor ? (
+        {outdoor.length > 0 ? (
           <CardGrid cols="grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {active.running && <RunProgress />}
-            {active.golfing && <GolfingProgress />}
-            {active.hiking && <HikeProgress />}
-            {active.surfing && <SurfProgress />}
-            {active.skiing && <SkiingProgress />}
-            {active.snorkeling && <SnorkelingProgress />}
-            {active.basketball && <BasketballProgress />}
-            {active.volleyball && <VolleyballProgress />}
+            {outdoor.map((a) => {
+              const Card = cardComponents[a.slug];
+              return <Card key={a.slug} />;
+            })}
           </CardGrid>
         ) : (
           <p className="text-gray-400">No outdoor activities yet.</p>
