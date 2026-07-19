@@ -31,6 +31,15 @@ export default function Navbar() {
       </div>
       <div className="flex items-center gap-4">
         {user && (
+          <Link
+            to="/settings"
+            className="hover:text-yellow-300 transition"
+            aria-label="Settings"
+          >
+            ⚙️
+          </Link>
+        )}
+        {user && (
           <span className="text-sm text-slate-300">
             Signed in as {user.email}
           </span>

@@ -15,6 +15,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   activities: Activity[];
+  refreshActivities: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -63,7 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, activities, signOut }}>
+    <AuthContext.Provider
+      value={{ user, loading, activities, refreshActivities: fetchActivities, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );

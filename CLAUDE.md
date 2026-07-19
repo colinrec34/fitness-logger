@@ -23,6 +23,9 @@ There are no tests.
 
 1. **Navbar** — `Navbar.tsx` sorts and renders links from `activities` ordered by `placement_row`/`placement_col`
 2. **Routes** — `App.tsx` dynamically registers a `<Route>` per active activity slug, mapping each slug to its component via the `activityComponents` record
+3. **Home cards** — `Home.tsx` renders dashboard cards from the same sorted list via its `cardComponents` record
+
+The `/settings` page (`src/pages/Settings.tsx`) reorders activities in the UI: it calls `PUT /api/activities/order` with the full slug list, which renumbers placements to `row=index, col=0` in a transaction (shifting rows first to dodge the `(user_id, placement_row, placement_col)` unique constraint), then refreshes `AuthContext` so navbar and cards update immediately.
 
 This means adding a new activity requires: a row in the `activities` table, a component registered in `activityComponents`, and a hardcoded `ACTIVITY_ID` UUID in that component matching the DB row.
 
@@ -38,7 +41,7 @@ All writes use `upsert` with `onConflict: "activity_id,datetime"` so re-submitti
 
 **Read-only route pages** (running, hiking): display run/hike logs from the DB with polyline-encoded routes rendered via react-leaflet + `@mapbox/polyline`. (These previously auto-synced from Strava via a Supabase edge function; the Strava sync was removed when the API was blocked. New runs/hikes now arrive via the Health Auto Export ingest — see below.)
 
-**Manual-entry with locations** (surfing, skiing, golfing, snorkeling): Two-column layout — left is a form + session history, right is `StatisticsSection` + a Leaflet map with markers per saved location. Changing the date picker pre-populates the form from any existing log for that day. Locations are stored in the `locations` table and selected via dropdown; new ones can be added inline with lat/lon.
+**Manual-entry with locations** (surfing, skiing, golfing, snorkeling, basketball, volleyball): Two-column layout — left is a form + session history, right is `StatisticsSection` + a Leaflet map with markers per saved location. Changing the date picker pre-populates the form from any existing log for that day. Locations are stored in the `locations` table and selected via dropdown; new ones can be added inline with lat/lon.
 
 **Manual-entry without locations** (weight, lifting): Weight is a simple time-series chart. Lifting is the most complex page — tracks six lifts (squat, bench, deadlift, pullups, overhead press, power clean) each with warmup and working sets (reps × weight × sets), renders per-lift line charts using recharts.
 

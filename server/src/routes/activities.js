@@ -38,6 +38,41 @@ router.post('/', async (req, res, next) => {
   }
 })
 
+// Replace the navbar/card ordering: body is { slugs: [...] } listing every
+// activity in the desired order. Placements are renumbered to row=index, col=0.
+// The (user_id, placement_row, placement_col) unique constraint is checked
+// per-row, so shift everything out of the way before assigning final values.
+router.put('/order', async (req, res, next) => {
+  try {
+    const { slugs } = req.body
+    if (!Array.isArray(slugs) || !slugs.every((s) => typeof s === 'string'))
+      return res.status(400).json({ error: 'slugs array required' })
+    const existing = await prisma.activity.findMany({ where: { user_id: req.userId } })
+    const known = new Set(existing.map((a) => a.slug))
+    if (slugs.length !== known.size || !slugs.every((s) => known.has(s)))
+      return res.status(400).json({ error: 'slugs must list every activity exactly once' })
+    await prisma.$transaction([
+      prisma.activity.updateMany({
+        where: { user_id: req.userId },
+        data: { placement_row: { increment: 1000 } },
+      }),
+      ...slugs.map((slug, i) =>
+        prisma.activity.updateMany({
+          where: { user_id: req.userId, slug },
+          data: { placement_row: i, placement_col: 0 },
+        })
+      ),
+    ])
+    const activities = await prisma.activity.findMany({
+      where: { user_id: req.userId },
+      orderBy: [{ placement_row: 'asc' }, { placement_col: 'asc' }],
+    })
+    res.json(activities)
+  } catch (err) {
+    next(err)
+  }
+})
+
 router.patch('/:id', async (req, res, next) => {
   try {
     const existing = await prisma.activity.findFirst({ where: { id: req.params.id, user_id: req.userId } })

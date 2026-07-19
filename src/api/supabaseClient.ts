@@ -40,7 +40,7 @@ function clearAuth() {
 // Error type mirrors what the app reads off Supabase errors: .message and .code.
 type ApiError = Error & { code?: string };
 
-async function apiFetch(path: string, opts: RequestInit = {}): Promise<any> {
+export async function apiFetch(path: string, opts: RequestInit = {}): Promise<any> {
   const token = getToken();
   const res = await fetch(BASE + path, {
     ...opts,

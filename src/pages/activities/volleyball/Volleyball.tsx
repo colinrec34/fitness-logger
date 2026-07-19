@@ -5,15 +5,21 @@ import { MapContainer, TileLayer, Marker, Tooltip } from "react-leaflet";
 import { supabase } from "../../../api/supabaseClient";
 import { useAuth } from "../../../context/AuthContext";
 import { currentDatetimeLocal } from "../../../lib/datetimeLocal";
-import { groupLogsByLocation, FitBoundsPoints } from "../../../lib/locationUtils";
+import {
+  groupLogsByLocation,
+  FitBoundsPoints,
+} from "../../../lib/locationUtils";
 import StatisticsSection from "../../../components/StatisticsSection";
-import { filterLogsByRange, type TimeRange } from "../../../components/TimeRangeFilter";
+import {
+  filterLogsByRange,
+  type TimeRange,
+} from "../../../components/TimeRangeFilter";
 
-const ACTIVITY_ID = "c9585467-e875-4b95-91fe-4263493854b0";
+const ACTIVITY_ID = "ff8c1476-8ec7-42e0-82fb-5c59bff6a026";
 
 import type { LocationRow, LogRow } from "./types";
 
-export default function Snorkeling() {
+export default function Volleyball() {
   const { user } = useAuth();
   const [showAddLocation, setShowAddLocation] = useState(false);
   const [range, setRange] = useState<TimeRange>("Max");
@@ -28,7 +34,9 @@ export default function Snorkeling() {
 
   const [form, setForm] = useState({
     location: "",
-    duration: 0,
+    duration_min: 60,
+    sets: 0,
+    players: 0,
     notes: "",
   });
 
@@ -98,7 +106,7 @@ export default function Snorkeling() {
 
       if (error) {
         console.error("Error fetching logs:", error);
-        setError("Failed to load snorkeling sessions. Please refresh.");
+        setError("Failed to load Volleyball sessions. Please refresh.");
         setLogs([]);
       } else if (data) {
         setLogs(data);
@@ -136,11 +144,13 @@ export default function Snorkeling() {
       if (data) {
         setForm({
           location: data.location || "",
-          duration: data.duration || 0,
-          notes: data.notes || "",
+          duration_min: data.data?.duration_min || 0,
+          sets: data.data?.sets || 0,
+          players: data.data?.players || 0,
+          notes: data.data?.notes || "",
         });
       } else {
-        setForm({ location: "", duration: 0, notes: "" });
+        setForm({ location: "", duration_min: 0, sets: 0, players: 0, notes: "" });
       }
     }
     fetchLogForDate();
@@ -167,7 +177,9 @@ export default function Snorkeling() {
         datetime: new Date(datetime).toISOString(),
         location_id: locMatch.id,
         data: {
-          duration: form.duration,
+          duration_min: form.duration_min,
+          sets: form.sets,
+          players: form.players,
           notes: form.notes,
         },
       };
@@ -178,7 +190,7 @@ export default function Snorkeling() {
 
       if (error) throw error;
 
-      alert("Snorkeling session logged!");
+      alert("Volleyball session logged!");
 
       const { data: updatedLogs, error: fetchError } = await supabase
         .from("logs")
@@ -198,14 +210,14 @@ export default function Snorkeling() {
   const groupedLogsByLocation = groupLogsByLocation(
     filteredLogs,
     locations,
-    (log) => (log.data.duration as number) ?? 0
+    (log) => (log.data.sets as number) ?? 0,
   );
 
   return (
     <div className="flex flex-col md:flex-row gap-8 p-6">
       {/* Left Column */}
       <div className="flex-1 space-y-6">
-        <h1 className="text-3xl font-bold">Log a Snorkeling Session</h1>
+        <h1 className="text-3xl font-bold">Log a Volleyball Session</h1>
         <form
           onSubmit={handleSubmit}
           className="space-y-4 bg-slate-800 p-6 rounded-xl shadow-md"
@@ -281,9 +293,33 @@ export default function Snorkeling() {
             <input
               type="number"
               className="w-full p-2 rounded bg-slate-700 text-white"
-              value={form.duration}
+              value={form.duration_min}
               onChange={(e) =>
-                setForm({ ...form, duration: parseInt(e.target.value || "0") })
+                setForm({ ...form, duration_min: parseInt(e.target.value || "0") })
+              }
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1">Sets</label>
+            <input
+              type="number"
+              className="w-full p-2 rounded bg-slate-700 text-white"
+              value={form.sets}
+              onChange={(e) =>
+                setForm({ ...form, sets: parseInt(e.target.value || "0") })
+              }
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1">Players</label>
+            <input
+              type="number"
+              className="w-full p-2 rounded bg-slate-700 text-white"
+              value={form.players}
+              onChange={(e) =>
+                setForm({ ...form, players: parseInt(e.target.value || "0") })
               }
             />
           </div>
@@ -305,8 +341,9 @@ export default function Snorkeling() {
           </button>
         </form>
 
+        {/* SESSION HISTORY */}
         <div className="bg-slate-800 rounded-xl p-4 max-h-[400px] overflow-y-auto shadow-md">
-          <h2 className="text-xl font-semibold mb-2">Snorkeling Session History</h2>
+          <h2 className="text-xl font-semibold mb-2">Volleyball Session History</h2>
           {loading ? (
             <p className="italic text-gray-400">Loading sessions...</p>
           ) : error ? (
@@ -326,7 +363,9 @@ export default function Snorkeling() {
                         "Unknown location"}
                     </div>
                     <div className="text-sm text-gray-300">
-                      {log.data.duration} minutes
+                      {log.data.duration_min} min ·{" "}
+                      {log.data.sets} sets ·{" "}
+                      {log.data.players} players
                     </div>
                     {log.data.notes && (
                       <div className="text-sm text-gray-400 mt-1 italic">
@@ -342,23 +381,46 @@ export default function Snorkeling() {
 
       {/* Right Column */}
       <div className="md:w-1/2 space-y-6">
-        <h1 className="text-3xl font-bold">Snorkeling Statistics</h1>
+        <h1 className="text-3xl font-bold">Volleyball Statistics</h1>
         <StatisticsSection
           logs={logs}
           getDate={(log) => log.datetime}
           range={range}
           onRangeChange={setRange}
-          computeStats={(filtered) => [
-            { label: "Total sessions", value: filtered.length },
-            { label: "Total hours", value: (filtered.reduce((s, l) => s + (l.data?.duration ?? 0), 0) / 60).toFixed(1) },
-          ]}
+          computeStats={(filtered) => {
+            const count = filtered.length || 1;
+
+            const { totalMinutes, totalSets, totalPlayers } = filtered.reduce(
+              (acc, l) => {
+                acc.totalMinutes += l.data?.duration_min ?? 0;
+                acc.totalSets += l.data?.sets ?? 0;
+                acc.totalPlayers += l.data?.players ?? 0;
+                return acc;
+              },
+              { totalMinutes: 0, totalSets: 0, totalPlayers: 0 },
+            );
+
+            return [
+              { label: "Total sessions", value: filtered.length },
+              { label: "Total sets", value: totalSets },
+              { label: "Total hours", value: (totalMinutes / 60).toFixed(1) },
+              {
+                label: "Average duration (min)",
+                value: (totalMinutes / count).toFixed(0),
+              },
+              {
+                label: "Average players",
+                value: (totalPlayers / count).toFixed(1),
+              },
+            ];
+          }}
         />
 
         <div className="bg-slate-800 rounded-xl overflow-hidden shadow-md">
           <MapContainer
             style={{ height: "75vh", width: "100%" }}
-            center={[34.0, -118.5]}
-            zoom={8}
+            center={[39.5, -106.0]}
+            zoom={7}
             scrollWheelZoom={true}
           >
             <TileLayer
@@ -372,7 +434,7 @@ export default function Snorkeling() {
                     <div className="font-semibold">{name}</div>
                     {logs.map((log) => (
                       <div key={log.id}>
-                        {log.date} · {log.metric} min
+                        {log.date} · {log.metric} sets
                       </div>
                     ))}
                   </div>

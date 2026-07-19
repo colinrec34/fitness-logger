@@ -10,6 +10,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 
 import Login from "./pages/Login";
 import Home from "./pages/Home";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 import Weight from "./pages/activities/weight/Weight";
@@ -20,6 +21,8 @@ import Running from "./pages/activities/running/Running";
 import Snorkeling from "./pages/activities/snorkeling/Snorkeling";
 import Skiing from "./pages/activities/skiing/Skiing";
 import Golfing from "./pages/activities/golfing/Golfing"
+import Basketball from "./pages/activities/basketball/Basketball";
+import Volleyball from "./pages/activities/volleyball/Volleyball";
 
 const activityComponents: Record<string, React.FC> = {
   weight: Weight,
@@ -30,6 +33,8 @@ const activityComponents: Record<string, React.FC> = {
   surfing: Surfing,
   skiing: Skiing,
   snorkeling: Snorkeling,
+  basketball: Basketball,
+  volleyball: Volleyball,
 };
 
 export default function App() {
@@ -54,6 +59,14 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <Home />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <Settings />
                     </ProtectedRoute>
                   }
                 />

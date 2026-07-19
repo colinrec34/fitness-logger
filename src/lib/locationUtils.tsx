@@ -59,10 +59,16 @@ export function groupLogsByLocation<T extends MinimalLog>(
 
 export function FitBoundsPoints({ points }: { points: LatLngExpression[] }) {
   const map = useMap();
+  // Key on the coordinates, not the array identity — callers rebuild the
+  // array every render and the map shouldn't re-fit unless points changed.
+  const pointsKey = JSON.stringify(points);
   useEffect(() => {
-    if (points.length > 1) {
+    if (points.length === 1) {
+      map.setView(points[0], 13);
+    } else if (points.length > 1) {
       map.fitBounds(points as LatLngBoundsExpression, { padding: [20, 20] });
     }
-  }, [points, map]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pointsKey, map]);
   return null;
 }
