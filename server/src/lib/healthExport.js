@@ -29,8 +29,8 @@ function qtyIn(field, factors) {
   return factor == null ? null : field.qty * factor
 }
 
-// Apple workout type names as HAE exports them: "Running", "Outdoor Run",
-// "Hiking", "Walking", "Cycling", ...
+// Apple workout type names as HAE exports them ("Running", "Outdoor Run",
+// "Hiking", ...) or Strava types from the scraper ("Run", "TrailRun", "Hike").
 export function classifyWorkout(name) {
   const n = String(name || '').toLowerCase()
   if (n.includes('run')) return 'run'

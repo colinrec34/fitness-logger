@@ -29,6 +29,27 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Pulls new runs/hikes off strava.com with a browser session cookie and
+  # feeds them to the app's /api/health-export ingest. Optional: only runs
+  # usefully when STRAVA_SESSION_COOKIE is set.
+  strava-scraper:
+    build: ./strava-scraper
+    environment:
+      STRAVA_SESSION_COOKIE: ${STRAVA_SESSION_COOKIE:-}
+      HEALTH_EXPORT_TOKEN: ${HEALTH_EXPORT_TOKEN:-}
+      HEALTH_EXPORT_URL: http://app:3000/api/health-export
+      SYNC_INTERVAL_SECONDS: ${STRAVA_SYNC_INTERVAL_SECONDS:-3600}
+    volumes:
+      - strava_scraper_state:/state
+    depends_on:
+      - app
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   postgres:
     image: postgres:15
     environment:
@@ -51,3 +72,4 @@ services:
 
 volumes:
   postgres_data:
+  strava_scraper_state:

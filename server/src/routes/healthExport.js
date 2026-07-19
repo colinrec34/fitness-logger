@@ -31,7 +31,9 @@ router.post('/', async (req, res, next) => {
 
     const results = []
     for (const workout of workouts) {
-      const kind = classifyWorkout(workout?.name)
+      // HAE identifies workouts by name ("Outdoor Run"); the Strava scraper
+      // sends a custom title plus an explicit `type` ("Run"/"Hike").
+      const kind = classifyWorkout(workout?.type) ?? classifyWorkout(workout?.name)
       if (!kind) {
         results.push({ name: workout?.name ?? null, status: 'skipped', reason: 'not a run or hike' })
         continue

@@ -57,6 +57,10 @@ All writes use `upsert` with `onConflict: "activity_id,datetime"` so re-submitti
 
 `server/src/routes/healthExport.js` — Express route (`POST /api/health-export`) that accepts workout payloads from the Health Auto Export iOS app (REST API automation). The Strava app syncs workouts + GPS routes into Apple Health; HAE POSTs them here. Runs and hikes are converted (`server/src/lib/healthExport.js`) into the same Strava-shaped `data` JSON the running/hiking pages render (`map.summary_polyline`, `distance` in meters, `elapsed_time` in seconds) and upserted on `(activity_id, datetime=workout start)`; other workout types are skipped. Bearer-token auth (`HEALTH_EXPORT_TOKEN`). The route has its own 250mb JSON parser (GPS payloads are large), mounted in `app.js` ahead of the global 1mb parser; the nginx vhost (`deploy/nginx-fitness.conf`) raises `client_max_body_size` to match.
 
+### Strava scraper (`strava-scraper/`)
+
+Python container (docker-compose service `strava-scraper`) that replaces the paywalled Strava API: it authenticates to strava.com with a browser session cookie (`STRAVA_SESSION_COOKIE` = the `_strava4_session` cookie value from a logged-in browser — no password stored), lists activities via the training page's JSON endpoint (`/athlete/training_activities`), downloads GPX for new runs/hikes (`/activities/{id}/export_gpx`), computes distance/elevation from trackpoints, and POSTs each one to `/api/health-export` in HAE's workout format with an explicit `type` ("Run"/"Hike"; Strava titles are custom, so the ingest classifies on `type` before `name`). First run backfills full history; synced ids persist in the `strava_scraper_state` volume. Polls hourly (`STRAVA_SYNC_INTERVAL_SECONDS`). If it logs auth failures, the cookie expired — paste a fresh one into `.env` and restart the service.
+
 ### Environment variables (server)
 
 | Variable | Used by |
