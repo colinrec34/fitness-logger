@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -64,6 +64,19 @@ export default function Running() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [range, setRange] = useState<TimeRange>("Max");
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    if (!highlightedId) return;
+    const timer = setTimeout(() => setHighlightedId(null), 2000);
+    return () => clearTimeout(timer);
+  }, [highlightedId]);
+
+  const scrollToLog = (id: string) => {
+    cardRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setHighlightedId(id);
+  };
 
   useEffect(() => {
     async function fetchAllLogs() {
@@ -128,7 +141,12 @@ export default function Running() {
               .map((log) => (
                 <div
                   key={log.id}
-                  className="bg-slate-800 rounded-xl p-4 shadow-md flex flex-col"
+                  ref={(el) => {
+                    cardRefs.current[log.id] = el;
+                  }}
+                  className={`bg-slate-800 rounded-xl p-4 shadow-md flex flex-col transition-shadow duration-300 ${
+                    highlightedId === log.id ? "ring-2 ring-[#32CD32]" : ""
+                  }`}
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -220,6 +238,7 @@ export default function Running() {
                           position={
                             polyline.decode(log.data.map.summary_polyline)[0]
                           }
+                          eventHandlers={{ click: () => scrollToLog(log.id) }}
                         >
                           <Tooltip>
                             <div className="text-sm">
