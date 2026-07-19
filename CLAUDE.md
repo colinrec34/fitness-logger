@@ -36,7 +36,7 @@ All writes use `upsert` with `onConflict: "activity_id,datetime"` so re-submitti
 
 ### Two activity patterns
 
-**Read-only route pages** (running, hiking): display run/hike logs from the DB with polyline-encoded routes rendered via react-leaflet + `@mapbox/polyline`. (These previously auto-synced from Strava via a Supabase edge function; the Strava sync was removed when the API was blocked.)
+**Read-only route pages** (running, hiking): display run/hike logs from the DB with polyline-encoded routes rendered via react-leaflet + `@mapbox/polyline`. (These previously auto-synced from Strava via a Supabase edge function; the Strava sync was removed when the API was blocked. New runs/hikes now arrive via the Health Auto Export ingest — see below.)
 
 **Manual-entry with locations** (surfing, skiing, golfing, snorkeling): Two-column layout — left is a form + session history, right is `StatisticsSection` + a Leaflet map with markers per saved location. Changing the date picker pre-populates the form from any existing log for that day. Locations are stored in the `locations` table and selected via dropdown; new ones can be added inline with lat/lon.
 
@@ -53,6 +53,10 @@ All writes use `upsert` with `onConflict: "activity_id,datetime"` so re-submitti
 
 `server/src/routes/esf551.js` — Express route (`POST /api/esf551`) that accepts weight readings from a Raspberry Pi Pico W running MicroPython (`pico/esf551/`), which reads an Etekcity ESF-551 smart scale over BLE. Writes a weight log via Prisma. Authenticated via a shared bearer token (`ESF551_WEBHOOK_TOKEN`).
 
+### Health Auto Export workout ingest
+
+`server/src/routes/healthExport.js` — Express route (`POST /api/health-export`) that accepts workout payloads from the Health Auto Export iOS app (REST API automation). The Strava app syncs workouts + GPS routes into Apple Health; HAE POSTs them here. Runs and hikes are converted (`server/src/lib/healthExport.js`) into the same Strava-shaped `data` JSON the running/hiking pages render (`map.summary_polyline`, `distance` in meters, `elapsed_time` in seconds) and upserted on `(activity_id, datetime=workout start)`; other workout types are skipped. Bearer-token auth (`HEALTH_EXPORT_TOKEN`). The route has its own 250mb JSON parser (GPS payloads are large), mounted in `app.js` ahead of the global 1mb parser; the nginx vhost (`deploy/nginx-fitness.conf`) raises `client_max_body_size` to match.
+
 ### Environment variables (server)
 
 | Variable | Used by |
@@ -62,3 +66,6 @@ All writes use `upsert` with `onConflict: "activity_id,datetime"` so re-submitti
 | `ESF551_WEBHOOK_TOKEN` | `routes/esf551.js` (bearer token) |
 | `ESF551_USER_ID` | `routes/esf551.js` (target user) |
 | `ESF551_WEIGHT_ACTIVITY_ID` | `api/esf551.ts` (optional, has default) |
+| `HEALTH_EXPORT_TOKEN` | `routes/healthExport.js` (bearer token) |
+| `HEALTH_EXPORT_USER_ID` | `routes/healthExport.js` (target user; falls back to `ESF551_USER_ID`) |
+| `HEALTH_EXPORT_RUN_ACTIVITY_ID` / `HEALTH_EXPORT_HIKE_ACTIVITY_ID` | `routes/healthExport.js` (optional, default to the hardcoded page IDs) |

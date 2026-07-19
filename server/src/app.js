@@ -9,6 +9,7 @@ import activityRoutes from './routes/activities.js'
 import logRoutes from './routes/logs.js'
 import locationRoutes from './routes/locations.js'
 import esf551Routes from './routes/esf551.js'
+import healthExportRoutes from './routes/healthExport.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -26,6 +27,10 @@ app.use(cors((req, cb) => {
   const allow = !origin || sameOrigin || allowedOrigins.includes(origin)
   cb(null, { origin: allow, credentials: true })
 }))
+
+// Health Auto Export workout payloads with GPS routes can be tens of MB, so
+// this route gets its own parser, mounted ahead of the global 1mb one.
+app.use('/api/health-export', express.json({ limit: '250mb' }), healthExportRoutes)
 
 app.use(express.json({ limit: '1mb' }))
 

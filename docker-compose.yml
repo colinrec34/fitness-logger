@@ -14,6 +14,11 @@ services:
       ESF551_WEBHOOK_TOKEN: ${ESF551_WEBHOOK_TOKEN:-}
       ESF551_USER_ID: ${ESF551_USER_ID:-}
       ESF551_WEIGHT_ACTIVITY_ID: ${ESF551_WEIGHT_ACTIVITY_ID:-}
+      # Health Auto Export workout ingest (POST /api/health-export)
+      HEALTH_EXPORT_TOKEN: ${HEALTH_EXPORT_TOKEN:-}
+      HEALTH_EXPORT_USER_ID: ${HEALTH_EXPORT_USER_ID:-}
+      HEALTH_EXPORT_RUN_ACTIVITY_ID: ${HEALTH_EXPORT_RUN_ACTIVITY_ID:-}
+      HEALTH_EXPORT_HIKE_ACTIVITY_ID: ${HEALTH_EXPORT_HIKE_ACTIVITY_ID:-}
     depends_on:
       postgres:
         condition: service_healthy
