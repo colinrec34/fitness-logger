@@ -1,4 +1,5 @@
--- Adds the basketball and volleyball activities for the (single) app user.
+-- Adds the basketball and volleyball activities for the main app user
+-- (the one who owns the existing activities — the DB has stale extra accounts).
 -- The UUIDs are fixed: they must match the hardcoded ACTIVITY_IDs in
 -- src/pages/activities/basketball/* and src/pages/activities/volleyball/*.
 --
@@ -8,7 +9,7 @@
 -- Idempotent: re-running does nothing once the rows exist.
 
 WITH me AS (
-  SELECT id FROM users ORDER BY created_at LIMIT 1
+  SELECT user_id AS id FROM activities GROUP BY user_id ORDER BY count(*) DESC LIMIT 1
 ), next_row AS (
   SELECT COALESCE(MAX(placement_row), -1) + 1 AS row
   FROM activities, me
