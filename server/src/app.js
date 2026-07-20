@@ -10,6 +10,7 @@ import logRoutes from './routes/logs.js'
 import locationRoutes from './routes/locations.js'
 import esf551Routes from './routes/esf551.js'
 import healthExportRoutes from './routes/healthExport.js'
+import latestActivityRoutes from './routes/latestActivity.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -43,6 +44,7 @@ const writeLimiter = rateLimit({
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
 app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/esf551', esf551Routes)
+app.use('/api/latest-activity', latestActivityRoutes)
 app.use('/api/activities', writeLimiter, activityRoutes)
 app.use('/api/logs', writeLimiter, logRoutes)
 app.use('/api/locations', writeLimiter, locationRoutes)
