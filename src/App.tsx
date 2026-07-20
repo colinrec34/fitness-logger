@@ -23,6 +23,7 @@ import Skiing from "./pages/activities/skiing/Skiing";
 import Golfing from "./pages/activities/golfing/Golfing"
 import Basketball from "./pages/activities/basketball/Basketball";
 import Volleyball from "./pages/activities/volleyball/Volleyball";
+import Tennis from "./pages/activities/tennis/Tennis";
 
 const activityComponents: Record<string, React.FC> = {
   weight: Weight,
@@ -35,6 +36,7 @@ const activityComponents: Record<string, React.FC> = {
   snorkeling: Snorkeling,
   basketball: Basketball,
   volleyball: Volleyball,
+  tennis: Tennis,
 };
 
 export default function App() {

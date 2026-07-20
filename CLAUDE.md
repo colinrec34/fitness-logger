@@ -41,7 +41,7 @@ All writes use `upsert` with `onConflict: "activity_id,datetime"` so re-submitti
 
 **Read-only route pages** (running, hiking): display run/hike logs from the DB with polyline-encoded routes rendered via react-leaflet + `@mapbox/polyline`. (These previously auto-synced from Strava via a Supabase edge function; the Strava sync was removed when the API was blocked. New runs/hikes now arrive via the Health Auto Export ingest — see below.)
 
-**Manual-entry with locations** (surfing, skiing, golfing, snorkeling, basketball, volleyball): Two-column layout — left is a form + session history, right is `StatisticsSection` + a Leaflet map with markers per saved location. Changing the date picker pre-populates the form from any existing log for that day. Locations are stored in the `locations` table and selected via dropdown; new ones can be added inline with lat/lon.
+**Manual-entry with locations** (surfing, skiing, golfing, snorkeling, basketball, volleyball, tennis): Two-column layout — left is a form + session history, right is `StatisticsSection` + a Leaflet map with markers per saved location. Changing the date picker pre-populates the form from any existing log for that day. Locations are stored in the `locations` table and selected via dropdown; new ones can be added inline with lat/lon.
 
 **Manual-entry without locations** (weight, lifting): Weight is a simple time-series chart. Lifting is the most complex page — tracks six lifts (squat, bench, deadlift, pullups, overhead press, power clean) each with warmup and working sets (reps × weight × sets), renders per-lift line charts using recharts.
 

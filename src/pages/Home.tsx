@@ -10,6 +10,7 @@ import SkiingProgress from "./activities/skiing/SkiingHomeCard";
 import GolfingProgress from "./activities/golfing/GolfingHomeCard";
 import BasketballProgress from "./activities/basketball/BasketballHomeCard";
 import VolleyballProgress from "./activities/volleyball/VolleyballHomeCard";
+import TennisProgress from "./activities/tennis/TennisHomeCard";
 
 import CardGrid from "../components/CardGrid";
 
@@ -24,6 +25,7 @@ const cardComponents: Record<string, React.FC> = {
   snorkeling: SnorkelingProgress,
   basketball: BasketballProgress,
   volleyball: VolleyballProgress,
+  tennis: TennisProgress,
 };
 
 const progressSlugs = new Set(["weight", "lifting"]);
