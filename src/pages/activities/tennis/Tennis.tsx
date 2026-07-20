@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { LatLngExpression } from "leaflet";
 import { format } from "date-fns";
 import { MapContainer, TileLayer, Marker, Tooltip } from "react-leaflet";
@@ -31,6 +31,20 @@ export default function Tennis() {
   const [newLocationName, setNewLocationName] = useState("");
   const [newLat, setNewLat] = useState("");
   const [newLon, setNewLon] = useState("");
+
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const cardRefs = useRef<Record<string, HTMLLIElement | null>>({});
+
+  useEffect(() => {
+    if (!highlightedId) return;
+    const timer = setTimeout(() => setHighlightedId(null), 2000);
+    return () => clearTimeout(timer);
+  }, [highlightedId]);
+
+  const scrollToLog = (id: string) => {
+    cardRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setHighlightedId(id);
+  };
 
   const [form, setForm] = useState({
     location: "",
@@ -356,7 +370,15 @@ export default function Tennis() {
                 .slice()
                 .sort((a, b) => b.datetime.localeCompare(a.datetime))
                 .map((log) => (
-                  <li key={log.id} className="border-b border-slate-600 pb-2">
+                  <li
+                    key={log.id}
+                    ref={(el) => {
+                      cardRefs.current[log.id] = el;
+                    }}
+                    className={`border-b border-slate-600 pb-2 transition-shadow duration-300 ${
+                      highlightedId === log.id ? "ring-2 ring-[#32CD32] rounded-lg" : ""
+                    }`}
+                  >
                     <div className="font-semibold text-white">
                       {format(new Date(log.datetime), "MMMM d, yyyy")}:{" "}
                       {locations.find((l) => l.id === log.location_id)?.name ||
@@ -428,7 +450,13 @@ export default function Tennis() {
               attribution="&copy; OpenStreetMap contributors"
             />
             {groupedLogsByLocation.map(({ name, coordinates, logs }) => (
-              <Marker key={name} position={coordinates}>
+              <Marker
+                key={name}
+                position={coordinates}
+                eventHandlers={{
+                  click: () => scrollToLog(logs[logs.length - 1].id),
+                }}
+              >
                 <Tooltip direction="top">
                   <div className="text-sm">
                     <div className="font-semibold">{name}</div>
