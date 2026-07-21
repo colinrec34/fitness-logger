@@ -15,7 +15,9 @@ PREFERRED_UNIT = None
 
 # Optional webhook for forwarding measurements.
 # Leave WEBHOOK_URL = None to only print measurements over serial.
-WEBHOOK_URL = "http://fitness.home/api/esf551"
+# Use the server's LAN IP and published app port (see README's Webhook Mode
+# section for why fitness.home / port 80 don't work from the Pico).
+WEBHOOK_URL = "http://192.168.1.100:3002/api/esf551"
 WEBHOOK_HEADERS = {
     "Authorization": "Bearer your-shared-webhook-token",
 }

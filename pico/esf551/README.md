@@ -59,11 +59,24 @@ Optional server environment variable:
 The Pico should send:
 
 ```python
-WEBHOOK_URL = "http://fitness.home/api/esf551"
+WEBHOOK_URL = "http://<server-lan-ip>:3002/api/esf551"
 WEBHOOK_HEADERS = {
     "Authorization": "Bearer your-shared-webhook-token",
 }
 ```
+
+Use the server's LAN IP and the app's published port (3002 by default in
+`docker-compose.yml`), not the `fitness.home` alias. That hostname is only
+defined in per-machine `/etc/hosts` files (resolving to a Tailscale address),
+which the Pico's plain-WiFi network stack can't resolve. Hitting the LAN IP on
+port 80 instead of 3002 doesn't work either: nginx there routes by Host header
+across several vhosts, and a raw IP request falls through to a different app's
+`default_server` block. Hitting the app container's published port directly
+sidesteps both problems.
+
+Since the server's LAN IP is typically DHCP-assigned (not static), set a DHCP
+reservation for it at your router — otherwise a lease renewal can silently
+change the address and break the webhook.
 
 The endpoint inserts the same log shape the frontend weight page currently writes:
 
