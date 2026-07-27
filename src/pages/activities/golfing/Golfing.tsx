@@ -513,7 +513,10 @@ export default function Golfing() {
           <select
             className="w-full p-2 rounded bg-slate-700 text-white"
             value={form.location}
-            onChange={(e) => setForm({ ...form, location: e.target.value })}
+            onChange={(e) => {
+              setForm({ ...form, location: e.target.value });
+              setShowEditCourse(false);
+            }}
           >
             <option value="">Select location...</option>
             {locations.map((loc) => (
