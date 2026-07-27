@@ -24,7 +24,7 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { activity_id, name, lat, lon } = req.body
+    const { activity_id, name, lat, lon, data } = req.body
     if (!activity_id || !name) return res.status(400).json({ error: 'activity_id and name required' })
     const owns = await prisma.activity.findFirst({ where: { id: activity_id, user_id: req.userId } })
     if (!owns) return res.status(404).json({ error: 'Activity not found' })
@@ -35,9 +35,30 @@ router.post('/', async (req, res, next) => {
         name,
         lat: lat === undefined || lat === null || lat === '' ? null : lat,
         lon: lon === undefined || lon === null || lon === '' ? null : lon,
+        data: data === undefined ? null : data,
       },
     })
     res.status(201).json(shape(location))
+  } catch (err) {
+    if (err?.code === 'P2002') {
+      return res.status(409).json({ error: 'A location with that name already exists for this activity' })
+    }
+    next(err)
+  }
+})
+
+router.patch('/:id', async (req, res, next) => {
+  try {
+    const existing = await prisma.location.findFirst({ where: { id: req.params.id, user_id: req.userId } })
+    if (!existing) return res.status(404).json({ error: 'Location not found' })
+    const { name, lat, lon, data } = req.body
+    const update = {}
+    if (name !== undefined) update.name = name
+    if (lat !== undefined) update.lat = lat === null || lat === '' ? null : lat
+    if (lon !== undefined) update.lon = lon === null || lon === '' ? null : lon
+    if (data !== undefined) update.data = data
+    const location = await prisma.location.update({ where: { id: req.params.id }, data: update })
+    res.json(shape(location))
   } catch (err) {
     if (err?.code === 'P2002') {
       return res.status(409).json({ error: 'A location with that name already exists for this activity' })

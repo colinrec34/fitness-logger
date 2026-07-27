@@ -105,7 +105,7 @@ function cmp(a: any, b: any): number {
 
 class QueryBuilder implements PromiseLike<Result> {
   private table: string;
-  private op: "select" | "write" = "select";
+  private op: "select" | "write" | "update" = "select";
   private payload: any = null;
   private filters: Filter[] = [];
   private orderBy: { col: string; ascending: boolean } | null = null;
@@ -117,6 +117,7 @@ class QueryBuilder implements PromiseLike<Result> {
   select(_cols?: string) { this.op = "select"; return this; }
   insert(obj: any) { this.op = "write"; this.payload = obj; return this; }
   upsert(obj: any, _opts?: any) { this.op = "write"; this.payload = obj; return this; }
+  update(obj: any) { this.op = "update"; this.payload = obj; return this; }
   eq(col: string, val: any) { this.filters.push({ col, op: "eq", val }); return this; }
   neq(col: string, val: any) { this.filters.push({ col, op: "neq", val }); return this; }
   gt(col: string, val: any) { this.filters.push({ col, op: "gt", val }); return this; }
@@ -139,6 +140,14 @@ class QueryBuilder implements PromiseLike<Result> {
       if (this.op === "write") {
         const data = await apiFetch(`/${this.table}`, {
           method: "POST",
+          body: JSON.stringify(this.payload),
+        });
+        return { data, error: null };
+      }
+      if (this.op === "update") {
+        const id = this.eqVal("id");
+        const data = await apiFetch(`/${this.table}/${id}`, {
+          method: "PATCH",
           body: JSON.stringify(this.payload),
         });
         return { data, error: null };

@@ -47,6 +47,7 @@ model Location {
   name        String
   lat         Decimal? @db.Decimal
   lon         Decimal? @db.Decimal
+  data        Json?
   created_at  DateTime @default(now()) @db.Timestamptz(6)
   user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   activity    Activity @relation(fields: [activity_id], references: [id], onDelete: Cascade)

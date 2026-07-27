@@ -1,9 +1,21 @@
+export interface CourseData {
+  holes?: number;
+  pars?: number[]; // pars[i] = par for hole i+1, length === holes
+}
+
+export interface HoleScore {
+  hole: number;
+  par?: number;
+  strokes: number;
+}
+
 export interface GolfingLogData {
   location_id: string;
   holes?: number;
   score?: number;
   players?: number;
   notes?: string;
+  holeScores?: HoleScore[];
 };
 
 export interface LocationRow {
@@ -13,6 +25,7 @@ export interface LocationRow {
     name: string;
     lat: number;
     lon: number;
+    data?: CourseData | null;
     created_at?: string;
 }
 
