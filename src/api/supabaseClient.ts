@@ -4,6 +4,12 @@
 //   supabase.auth.getSession/getUser/signInWithPassword/signUp/signOut/onAuthStateChange
 // The server scopes everything to the JWT user (replacing RLS), and returns rows
 // in the same snake_case shape Supabase did, so the rest of the app is unchanged.
+//
+// The query builder below intentionally mirrors Supabase's dynamically-typed
+// chainable API (arbitrary column names/values passed at each call site, and
+// some params accepted-but-ignored purely to match Supabase's signature), so
+// it can't be meaningfully typed without losing that flexibility.
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 
 const BASE = "/api";
 

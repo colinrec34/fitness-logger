@@ -11,7 +11,19 @@ npm run lint      # eslint
 npm run preview   # preview production build
 ```
 
-There are no tests.
+`server/` has one script beyond the usual `dev`/`start`/`db:push`:
+`npm run test:smoke` — a dependency-free Node script
+(`server/scripts/smoke-test.mjs`) that walks the real signup → auth →
+activity → location → log path against a running server + real Postgres.
+No other tests exist.
+
+### CI
+
+`.github/workflows/ci.yml` runs on every push and PR: frontend build + lint,
+then `prisma db push` and the backend smoke tests above against a Postgres
+service container. This is a safety-net status check on GitHub, not a
+deploy gate — `origin`'s second push URL triggers the home server's deploy
+hook the instant `main` is pushed, independent of whether CI has finished.
 
 ## Architecture
 

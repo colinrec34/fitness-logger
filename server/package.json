@@ -8,7 +8,8 @@
     "start": "node src/index.js",
     "build": "prisma generate",
     "db:push": "prisma db push",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test:smoke": "node scripts/smoke-test.mjs"
   },
   "dependencies": {
     "@mapbox/polyline": "^1.2.1",

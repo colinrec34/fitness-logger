@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: fitness
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: fitness
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fitness -d fitness"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Push Prisma schema
+        working-directory: server
+        env:
+          DATABASE_URL: postgresql://fitness:password@localhost:5432/fitness
+        run: npx prisma db push
+
+      - name: Backend smoke tests
+        working-directory: server
+        env:
+          DATABASE_URL: postgresql://fitness:password@localhost:5432/fitness
+          JWT_SECRET: ci-test-secret
+          PORT: 3000
+          BASE_URL: http://localhost:3000
+        run: |
+          node src/index.js &
+          SERVER_PID=$!
+          timeout 30 bash -c 'until curl -sf http://localhost:3000/api/health >/dev/null; do sleep 1; done'
+          node scripts/smoke-test.mjs
+          kill $SERVER_PID
