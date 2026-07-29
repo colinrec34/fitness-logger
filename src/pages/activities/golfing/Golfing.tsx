@@ -14,10 +14,28 @@ import {
   filterLogsByRange,
   type TimeRange,
 } from "../../../components/TimeRangeFilter";
+import { haversineMeters, metersToYards } from "../../../lib/geo";
 
 const ACTIVITY_ID = "8b6b6cf4-9cec-43db-926a-cce49dab38ff";
 
-import type { LocationRow, LogRow } from "./types";
+import type { LocationRow, LogRow, ShotPoint } from "./types";
+
+const CLUBS = [
+  "Driver",
+  "3-Wood",
+  "5-Wood",
+  "Hybrid",
+  "3-Iron",
+  "4-Iron",
+  "5-Iron",
+  "6-Iron",
+  "7-Iron",
+  "8-Iron",
+  "9-Iron",
+  "PW",
+  "SW",
+  "Putter",
+];
 
 const ROUND_DRAFT_KEY = "golf_round_draft_v1";
 
@@ -26,6 +44,7 @@ interface RoundDraft {
   holes: number;
   pars: number[];
   holeScores: number[];
+  shots: ShotPoint[][];
   currentHole: number;
   players: number;
   notes: string;
@@ -104,6 +123,8 @@ export default function Golfing() {
   const [roundHoles, setRoundHoles] = useState(0);
   const [roundPars, setRoundPars] = useState<number[]>([]);
   const [holeScores, setHoleScores] = useState<number[]>([]);
+  const [roundShots, setRoundShots] = useState<ShotPoint[][]>([]);
+  const [selectedClub, setSelectedClub] = useState("");
   const [currentHole, setCurrentHole] = useState(0);
   const [roundPlayers, setRoundPlayers] = useState(2);
   const [roundNotes, setRoundNotes] = useState("");
@@ -153,6 +174,7 @@ export default function Golfing() {
       holes: roundHoles,
       pars: roundPars,
       holeScores,
+      shots: roundShots,
       currentHole,
       players: roundPlayers,
       notes: roundNotes,
@@ -164,6 +186,7 @@ export default function Golfing() {
     roundHoles,
     roundPars,
     holeScores,
+    roundShots,
     currentHole,
     roundPlayers,
     roundNotes,
@@ -176,6 +199,9 @@ export default function Golfing() {
     setRoundHoles(pendingDraft.holes);
     setRoundPars(pendingDraft.pars);
     setHoleScores(pendingDraft.holeScores);
+    setRoundShots(
+      pendingDraft.shots ?? Array.from({ length: pendingDraft.holes }, () => [])
+    );
     setCurrentHole(pendingDraft.currentHole);
     setRoundPlayers(pendingDraft.players);
     setRoundNotes(pendingDraft.notes);
@@ -203,6 +229,7 @@ export default function Golfing() {
     setRoundHoles(holes);
     setRoundPars(pars);
     setHoleScores(pars.slice());
+    setRoundShots(Array.from({ length: holes }, () => []));
     setCurrentHole(0);
     setRoundPlayers(form.players || 2);
     setRoundNotes("");
@@ -214,6 +241,39 @@ export default function Golfing() {
     setHoleScores((prev) => {
       const next = [...prev];
       next[currentHole] = Math.max(1, (next[currentHole] ?? 4) + delta);
+      return next;
+    });
+  }
+
+  function markShot() {
+    if (!navigator.geolocation) {
+      alert("Location isn't available on this device/browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const shot: ShotPoint = {
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          club: selectedClub || undefined,
+          takenAt: new Date().toISOString(),
+        };
+        setRoundShots((prev) => {
+          const next = prev.map((h) => [...h]);
+          next[currentHole] = [...(next[currentHole] ?? []), shot];
+          return next;
+        });
+      },
+      (err) => alert(`Couldn't get location: ${err.message}`),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }
+
+  function deleteShot(index: number) {
+    setRoundShots((prev) => {
+      const next = prev.map((h) => [...h]);
+      next[currentHole] = next[currentHole].filter((_, i) => i !== index);
       return next;
     });
   }
@@ -235,6 +295,7 @@ export default function Golfing() {
           hole: i + 1,
           par: roundPars[i],
           strokes,
+          shots: roundShots[i]?.length ? roundShots[i] : undefined,
         })),
       },
     };
@@ -248,6 +309,7 @@ export default function Golfing() {
       clearRoundDraft();
       setRoundActive(false);
       setRoundStartedAt(null);
+      setRoundShots([]);
 
       const totalPar = roundPars.reduce((a, b) => a + b, 0);
       const diff = totalScore - totalPar;
@@ -809,6 +871,56 @@ export default function Golfing() {
                   </button>
                 </div>
 
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <select
+                      className="flex-1 p-2 rounded bg-slate-700 text-white text-sm"
+                      value={selectedClub}
+                      onChange={(e) => setSelectedClub(e.target.value)}
+                    >
+                      <option value="">Club (optional)</option>
+                      {CLUBS.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={markShot}
+                      className="px-4 py-2 rounded bg-slate-700 text-white text-sm font-semibold whitespace-nowrap"
+                    >
+                      📍 Mark Shot
+                    </button>
+                  </div>
+                  {(roundShots[currentHole] ?? []).length > 0 && (
+                    <ul className="text-sm text-gray-300 space-y-1">
+                      {(roundShots[currentHole] ?? []).map((shot, i, arr) => {
+                        const prev = arr[i - 1];
+                        const yards = prev
+                          ? Math.round(metersToYards(haversineMeters(prev, shot)))
+                          : null;
+                        return (
+                          <li key={i} className="flex items-center justify-between">
+                            <span>
+                              {shot.club || "Shot"} {i + 1}
+                              {yards != null ? ` · ${yards} yd from previous` : " · tee shot"}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => deleteShot(i)}
+                              className="text-red-400 px-2"
+                              aria-label="Delete shot"
+                            >
+                              ✕
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
                 <div className="text-center text-sm text-gray-300">
                   {(() => {
                     const total = holeScores.reduce((a, b) => a + b, 0);
@@ -979,6 +1091,30 @@ export default function Golfing() {
                 label: "Avg Score vs Par",
                 value: `${avgVsPar >= 0 ? "+" : ""}${avgVsPar.toFixed(1)}`,
               });
+            }
+
+            const yardsByClub = new Map<string, number[]>();
+            for (const l of filtered) {
+              for (const hole of l.data?.holeScores ?? []) {
+                const shots = hole.shots;
+                if (!shots || shots.length < 2) continue;
+                for (let i = 0; i < shots.length - 1; i++) {
+                  const club = shots[i].club;
+                  if (!club) continue;
+                  const yards = metersToYards(haversineMeters(shots[i], shots[i + 1]));
+                  if (!yardsByClub.has(club)) yardsByClub.set(club, []);
+                  yardsByClub.get(club)!.push(yards);
+                }
+              }
+            }
+            const clubAverages = [...yardsByClub.entries()]
+              .map(([club, yards]) => ({
+                club,
+                avg: yards.reduce((a, b) => a + b, 0) / yards.length,
+              }))
+              .sort((a, b) => b.avg - a.avg);
+            for (const { club, avg } of clubAverages) {
+              stats.push({ label: `Avg yardage — ${club}`, value: `${Math.round(avg)} yd` });
             }
 
             return stats;

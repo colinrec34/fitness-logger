@@ -3,10 +3,19 @@ export interface CourseData {
   pars?: number[]; // pars[i] = par for hole i+1, length === holes
 }
 
+export interface ShotPoint {
+  lat: number;
+  lon: number;
+  accuracy?: number;
+  club?: string;
+  takenAt: string; // ISO timestamp
+}
+
 export interface HoleScore {
   hole: number;
   par?: number;
   strokes: number;
+  shots?: ShotPoint[];
 }
 
 export interface GolfingLogData {

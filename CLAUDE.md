@@ -25,6 +25,21 @@ service container. This is a safety-net status check on GitHub, not a
 deploy gate — `origin`'s second push URL triggers the home server's deploy
 hook the instant `main` is pushed, independent of whether CI has finished.
 
+### On-course HTTPS access
+
+`fitness.home` (the nginx vhost, `deploy/nginx-fitness.conf`) is plain HTTP
+and LAN-only. For live on-course use (golf's "Start a round" GPS shot
+tracking — see below), the app also needs to be reachable off-LAN over a
+secure context, since browsers refuse `navigator.geolocation` outside HTTPS.
+That's served by `tailscale serve --bg --https=443 http://127.0.0.1:3002` on
+the home server (tailnet-only, not exposed publicly — see `tailscale serve
+status`), reachable at `https://colinrecker.tailaff13d.ts.net/` from any
+device signed into the same tailnet. Tailscale manages the cert lifecycle
+itself; there's nothing to renew manually and no nginx involvement. Requires
+"HTTPS Certificates" enabled once for the tailnet (admin console → DNS) and
+`sudo tailscale set --operator=colinrecker` run once on the server so
+`tailscale serve` doesn't need `sudo` per-invocation.
+
 ## Architecture
 
 **React 19 + TypeScript SPA** with a self-hosted **Express + Prisma + PostgreSQL** backend (JWT auth), served as one Docker container (Express serves the built SPA + `/api`). The frontend talks to the API through a thin shim in `src/api/supabaseClient.ts` that preserves the old `supabase.from(...)`/`supabase.auth.*` call sites, so the activity pages are unchanged. All endpoints are scoped to the JWT user (replacing the former Supabase RLS). No server-side rendering.
