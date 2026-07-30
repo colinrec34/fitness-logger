@@ -29,6 +29,7 @@ model Activity {
   is_active     Boolean    @default(true)
   placement_row Int        @default(0)
   placement_col Int        @default(0)
+  settings      Json?
   created_at    DateTime   @default(now()) @db.Timestamptz(6)
   updated_at    DateTime   @default(now()) @updatedAt @db.Timestamptz(6)
   user          User       @relation(fields: [user_id], references: [id], onDelete: Cascade)

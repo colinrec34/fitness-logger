@@ -38,6 +38,18 @@ export interface LocationRow {
     created_at?: string;
 }
 
+export interface ActivitySettings {
+  clubs?: string[];
+}
+
+export interface ActivityRow {
+  id: string;
+  user_id: string;
+  slug: string;
+  display_name: string;
+  settings?: ActivitySettings | null;
+}
+
 export interface LogRow {
   id: string;
   user_id: string;

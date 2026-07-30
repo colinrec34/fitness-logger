@@ -18,9 +18,9 @@ import { haversineMeters, metersToYards } from "../../../lib/geo";
 
 const ACTIVITY_ID = "8b6b6cf4-9cec-43db-926a-cce49dab38ff";
 
-import type { LocationRow, LogRow, ShotPoint } from "./types";
+import type { ActivityRow, LocationRow, LogRow, ShotPoint } from "./types";
 
-const CLUBS = [
+const DEFAULT_CLUBS = [
   "Driver",
   "3-Wood",
   "5-Wood",
@@ -113,6 +113,11 @@ export default function Golfing() {
   const [newLon, setNewLon] = useState("");
   const [newHoles, setNewHoles] = useState(18);
   const [newPars, setNewPars] = useState<number[]>(Array(18).fill(4));
+
+  const [clubs, setClubs] = useState<string[]>(DEFAULT_CLUBS);
+  const [showClubs, setShowClubs] = useState(false);
+  const [editClubs, setEditClubs] = useState<string[]>(DEFAULT_CLUBS);
+  const [newClubName, setNewClubName] = useState("");
 
   const [showEditCourse, setShowEditCourse] = useState(false);
   const [editHoles, setEditHoles] = useState(18);
@@ -416,6 +421,55 @@ export default function Golfing() {
   }, [user]);
 
   useEffect(() => {
+    async function fetchClubs() {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("activities")
+        .select("*")
+        .eq("id", ACTIVITY_ID)
+        .single();
+      if (!error && data) {
+        const activity = data as ActivityRow;
+        if (activity.settings?.clubs?.length) setClubs(activity.settings.clubs);
+      }
+    }
+    fetchClubs();
+  }, [user]);
+
+  function openClubsPanel() {
+    setEditClubs(clubs.slice());
+    setNewClubName("");
+    setShowClubs(true);
+  }
+
+  function addClubToEdit() {
+    const name = newClubName.trim();
+    if (!name || editClubs.includes(name)) return;
+    setEditClubs((prev) => [...prev, name]);
+    setNewClubName("");
+  }
+
+  function removeClubFromEdit(index: number) {
+    setEditClubs((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function saveClubs() {
+    try {
+      const { error } = await supabase
+        .from("activities")
+        .update({ settings: { clubs: editClubs } })
+        .eq("id", ACTIVITY_ID);
+      if (error) throw error;
+
+      setClubs(editClubs);
+      setShowClubs(false);
+    } catch (err) {
+      console.error("Failed to save clubs:", err);
+      alert(err instanceof Error ? err.message : "Error saving clubs.");
+    }
+  }
+
+  useEffect(() => {
     async function fetchAllLogs() {
       if (!user) return;
       setLoading(true);
@@ -605,7 +659,65 @@ export default function Golfing() {
                 {showEditCourse ? "Cancel" : "Edit course info"}
               </button>
             )}
+            <button
+              type="button"
+              className="text-blue-400"
+              onClick={() => (showClubs ? setShowClubs(false) : openClubsPanel())}
+            >
+              {showClubs ? "Cancel" : "Clubs"}
+            </button>
           </div>
+
+          {showClubs && (
+            <div className="mt-2 space-y-2">
+              <ul className="space-y-1">
+                {editClubs.map((c, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center justify-between bg-slate-700 px-3 py-1 rounded"
+                  >
+                    <span>{c}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeClubFromEdit(i)}
+                      className="text-red-400 px-2"
+                      aria-label={`Remove ${c}`}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 p-2 rounded bg-slate-700 text-white"
+                  placeholder="Add a club (e.g. 4-Hybrid)"
+                  value={newClubName}
+                  onChange={(e) => setNewClubName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addClubToEdit();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={addClubToEdit}
+                  className="bg-slate-600 px-3 py-1 rounded text-white"
+                >
+                  Add
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={saveClubs}
+                className="bg-blue-500 px-3 py-1 rounded text-white w-full"
+              >
+                Save Clubs
+              </button>
+            </div>
+          )}
 
           {showAddLocation && (
             <div className="mt-2 space-y-2">
@@ -879,7 +991,7 @@ export default function Golfing() {
                       onChange={(e) => setSelectedClub(e.target.value)}
                     >
                       <option value="">Club (optional)</option>
-                      {CLUBS.map((c) => (
+                      {clubs.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>

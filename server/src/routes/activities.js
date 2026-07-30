@@ -77,7 +77,7 @@ router.patch('/:id', async (req, res, next) => {
   try {
     const existing = await prisma.activity.findFirst({ where: { id: req.params.id, user_id: req.userId } })
     if (!existing) return res.status(404).json({ error: 'Activity not found' })
-    const { display_name, is_active, placement_row, placement_col } = req.body
+    const { display_name, is_active, placement_row, placement_col, settings } = req.body
     const activity = await prisma.activity.update({
       where: { id: req.params.id },
       data: {
@@ -85,6 +85,7 @@ router.patch('/:id', async (req, res, next) => {
         ...(is_active !== undefined && { is_active }),
         ...(placement_row !== undefined && { placement_row }),
         ...(placement_col !== undefined && { placement_col }),
+        ...(settings !== undefined && { settings }),
       },
     })
     res.json(activity)
