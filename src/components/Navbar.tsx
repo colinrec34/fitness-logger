@@ -14,22 +14,22 @@ export default function Navbar() {
     });
 
   return (
-    <nav className="bg-slate-900 text-white p-4 shadow flex justify-between">
-      <div className="flex gap-4">
-        <Link to="/" className="font-bold text-yellow-400">
+    <nav className="bg-slate-900 text-white p-4 shadow flex items-center justify-between gap-4">
+      <div className="flex gap-4 overflow-x-auto scroll-hide min-w-0 flex-nowrap">
+        <Link to="/" className="font-bold text-yellow-400 shrink-0">
           Dashboard
         </Link>
         {navActivities.map((activity) => (
           <Link
             key={activity.slug}
             to={`/${activity.slug}`}
-            className="hover:text-yellow-300 transition"
+            className="hover:text-yellow-300 transition shrink-0 whitespace-nowrap"
           >
             {activity.display_name}
           </Link>
         ))}
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 shrink-0">
         {user && (
           <Link
             to="/settings"
@@ -40,14 +40,14 @@ export default function Navbar() {
           </Link>
         )}
         {user && (
-          <span className="text-sm text-slate-300">
+          <span className="hidden sm:inline text-sm text-slate-300">
             Signed in as {user.email}
           </span>
         )}
         {user && (
           <button
             onClick={signOut}
-            className="bg-yellow-400 text-black px-3 py-1 rounded hover:bg-yellow-300 text-sm"
+            className="bg-yellow-400 text-black px-3 py-1 rounded hover:bg-yellow-300 text-sm shrink-0"
           >
             Logout
           </button>
