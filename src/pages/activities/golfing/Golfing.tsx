@@ -72,6 +72,24 @@ function resizePars(pars: number[], holes: number): number[] {
   return next;
 }
 
+// Rough guess at the next club based on shot count so far and the hole's
+// par: tee club, then (for par 4+) one mid-range approach, then wedge(s)
+// closing in on the green, then putter for the last stroke. Always
+// overridable in the dropdown before "Mark Shot" is pressed.
+function suggestClub(par: number, shotsTakenOnHole: number, clubs: string[]): string {
+  const pick = (candidates: string[]) =>
+    candidates.find((c) => clubs.includes(c)) ?? clubs[0] ?? "";
+
+  const lastIdx = Math.max(par - 1, 0);
+  const idx = shotsTakenOnHole;
+
+  if (idx >= lastIdx) return pick(["Putter"]);
+  if (idx === lastIdx - 1) return pick(["SW", "PW", "Wedge"]);
+  if (idx === 0) return par <= 3 ? pick(["6-Iron", "5-Iron", "7-Iron"]) : pick(["Driver"]);
+  if (idx === 1 && par >= 4) return pick(["Hybrid", "3-Wood", "5-Wood"]);
+  return pick(["SW", "PW", "Wedge"]);
+}
+
 function ParsGrid({
   pars,
   onChange,
@@ -197,6 +215,15 @@ export default function Golfing() {
     roundNotes,
     roundStartedAt,
   ]);
+
+  useEffect(() => {
+    if (!roundActive) return;
+    const par = roundPars[currentHole];
+    if (!par) return;
+    const shotsSoFar = roundShots[currentHole]?.length ?? 0;
+    setSelectedClub(suggestClub(par, shotsSoFar, clubs));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundActive, currentHole, roundShots[currentHole]?.length, roundPars[currentHole], clubs]);
 
   function resumeDraft() {
     if (!pendingDraft) return;
