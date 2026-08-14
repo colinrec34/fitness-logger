@@ -8,6 +8,7 @@ export interface ShotPoint {
   lon: number;
   accuracy?: number;
   club?: string;
+  penalty?: boolean; // out-of-bounds drop spot rather than a struck shot
   takenAt: string; // ISO timestamp
 }
 

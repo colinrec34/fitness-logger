@@ -302,12 +302,40 @@ export default function Golfing() {
     );
   }
 
+  function markPenaltyDrop() {
+    adjustStroke(1);
+    if (!navigator.geolocation) {
+      alert("Penalty stroke added. Location isn't available on this device/browser, so the drop spot wasn't recorded.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const shot: ShotPoint = {
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          penalty: true,
+          takenAt: new Date().toISOString(),
+        };
+        setRoundShots((prev) => {
+          const next = prev.map((h) => [...h]);
+          next[currentHole] = [...(next[currentHole] ?? []), shot];
+          return next;
+        });
+      },
+      (err) => alert(`Penalty stroke added, but couldn't get the drop location: ${err.message}`),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }
+
   function deleteShot(index: number) {
+    const removed = roundShots[currentHole]?.[index];
     setRoundShots((prev) => {
       const next = prev.map((h) => [...h]);
       next[currentHole] = next[currentHole].filter((_, i) => i !== index);
       return next;
     });
+    if (removed?.penalty) adjustStroke(-1);
   }
 
   async function finishRound() {
@@ -1032,6 +1060,13 @@ export default function Golfing() {
                       📍 Mark Shot
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={markPenaltyDrop}
+                    className="w-full px-4 py-2 rounded bg-red-900/40 border border-red-700 text-red-300 text-sm font-semibold"
+                  >
+                    🚫 Out of Bounds — Drop (+1 stroke)
+                  </button>
                   {(roundShots[currentHole] ?? []).length > 0 && (
                     <ul className="text-sm text-gray-300 space-y-1">
                       {(roundShots[currentHole] ?? []).map((shot, i, arr) => {
@@ -1042,8 +1077,10 @@ export default function Golfing() {
                         return (
                           <li key={i} className="flex items-center justify-between">
                             <span>
-                              {shot.club || "Shot"} {i + 1}
-                              {yards != null ? ` · ${yards} yd from previous` : " · tee shot"}
+                              {shot.penalty
+                                ? "Out of bounds — drop (+1 penalty)"
+                                : `${shot.club || "Shot"} ${i + 1}`}
+                              {yards != null ? ` · ${yards} yd from previous` : !shot.penalty ? " · tee shot" : ""}
                             </span>
                             <button
                               type="button"
