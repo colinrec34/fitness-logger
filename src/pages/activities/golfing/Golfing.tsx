@@ -10,6 +10,7 @@ import {
   FitBoundsPoints,
 } from "../../../lib/locationUtils";
 import StatisticsSection from "../../../components/StatisticsSection";
+import LocationSearchInput from "../../../components/LocationSearchInput";
 import {
   filterLogsByRange,
   type TimeRange,
@@ -93,9 +94,13 @@ function suggestClub(par: number, shotsTakenOnHole: number, clubs: string[]): st
 function ParsGrid({
   pars,
   onChange,
+  min = 3,
+  max = 6,
 }: {
   pars: number[];
   onChange: (index: number, value: number) => void;
+  min?: number;
+  max?: number;
 }) {
   return (
     <div className="grid grid-cols-6 gap-1">
@@ -104,8 +109,8 @@ function ParsGrid({
           <span className="text-[10px] text-gray-400">{i + 1}</span>
           <input
             type="number"
-            min={3}
-            max={6}
+            min={min}
+            max={max}
             className="w-full p-1 rounded bg-slate-700 text-white text-center text-sm"
             value={p}
             onChange={(e) => onChange(i, parseInt(e.target.value || "0") || 0)}
@@ -114,6 +119,15 @@ function ParsGrid({
       ))}
     </div>
   );
+}
+
+// Pads/truncates a per-hole score list to match the pars list, defaulting
+// any newly-added hole's score to that hole's par (a reasonable starting
+// guess to edit from, rather than always 0).
+function resizeScores(scores: number[], pars: number[]): number[] {
+  const next = scores.slice(0, pars.length);
+  while (next.length < pars.length) next.push(pars[next.length] ?? 4);
+  return next;
 }
 
 export default function Golfing() {
@@ -131,6 +145,10 @@ export default function Golfing() {
   const [newLon, setNewLon] = useState("");
   const [newHoles, setNewHoles] = useState(18);
   const [newPars, setNewPars] = useState<number[]>(Array(18).fill(4));
+
+  const [showScorecard, setShowScorecard] = useState(false);
+  const [logPars, setLogPars] = useState<number[]>(Array(18).fill(4));
+  const [logHoleScores, setLogHoleScores] = useState<number[]>(Array(18).fill(4));
 
   const [clubs, setClubs] = useState<string[]>(DEFAULT_CLUBS);
   const [showClubs, setShowClubs] = useState(false);
@@ -181,6 +199,36 @@ export default function Golfing() {
   useEffect(() => {
     setPendingDraft(loadRoundDraft());
   }, []);
+
+  function openScorecard() {
+    const holes = form.holes || selectedLocation?.data?.holes || 18;
+    const pars =
+      selectedLocation?.data?.pars?.length === holes
+        ? selectedLocation.data.pars
+        : resizePars(logPars, holes);
+    setLogPars(pars);
+    setLogHoleScores((prev) => resizeScores(prev, pars));
+    setShowScorecard(true);
+  }
+
+  // Keep the scorecard grid's length in sync if "Holes" changes while it's open.
+  useEffect(() => {
+    if (!showScorecard) return;
+    setLogPars((prev) => resizePars(prev, form.holes || 0));
+  }, [form.holes, showScorecard]);
+
+  useEffect(() => {
+    if (!showScorecard) return;
+    setLogHoleScores((prev) => resizeScores(prev, logPars));
+  }, [logPars, showScorecard]);
+
+  // The total score field mirrors the scorecard's sum while it's open, so
+  // they can never disagree.
+  useEffect(() => {
+    if (!showScorecard) return;
+    const total = logHoleScores.reduce((a, b) => a + b, 0);
+    setForm((f) => (f.score === total ? f : { ...f, score: total }));
+  }, [logHoleScores, showScorecard]);
 
   useEffect(() => {
     const loc = locations.find((l) => l.name === form.location);
@@ -581,8 +629,17 @@ export default function Golfing() {
           players: data.data?.players || 0,
           notes: data.data?.notes || "",
         });
+        const hs = data.data?.holeScores;
+        if (hs?.length) {
+          setLogPars(hs.map((h: { par?: number }) => h.par ?? 4));
+          setLogHoleScores(hs.map((h: { strokes: number }) => h.strokes));
+          setShowScorecard(true);
+        } else {
+          setShowScorecard(false);
+        }
       } else {
         setForm({ location: "", holes: 0, score: 0, players: 0, notes: "" });
+        setShowScorecard(false);
       }
     }
     fetchLogForDate();
@@ -613,6 +670,15 @@ export default function Golfing() {
           score: form.score,
           players: form.players,
           notes: form.notes,
+          ...(showScorecard && logHoleScores.length === form.holes
+            ? {
+                holeScores: logHoleScores.map((strokes, i) => ({
+                  hole: i + 1,
+                  par: logPars[i],
+                  strokes,
+                })),
+              }
+            : {}),
         },
       };
 
@@ -776,26 +842,22 @@ export default function Golfing() {
 
           {showAddLocation && (
             <div className="mt-2 space-y-2">
+              <LocationSearchInput
+                onSelect={(r) => {
+                  setNewLocationName(r.shortName);
+                  setNewLat(String(r.lat));
+                  setNewLon(String(r.lon));
+                }}
+              />
               <input
                 className="w-full p-2 rounded bg-slate-700 text-white"
-                placeholder="Add new location name"
+                placeholder="Location name"
                 value={newLocationName}
                 onChange={(e) => setNewLocationName(e.target.value)}
               />
-              <div className="flex gap-2">
-                <input
-                  className="w-1/2 p-2 rounded bg-slate-700 text-white"
-                  placeholder="Lat"
-                  value={newLat}
-                  onChange={(e) => setNewLat(e.target.value)}
-                />
-                <input
-                  className="w-1/2 p-2 rounded bg-slate-700 text-white"
-                  placeholder="Lon"
-                  value={newLon}
-                  onChange={(e) => setNewLon(e.target.value)}
-                />
-              </div>
+              {newLat && newLon && (
+                <p className="text-xs text-gray-400">📍 {newLat}, {newLon}</p>
+              )}
               <div>
                 <label className="block mb-1 text-sm">Holes</label>
                 <input
@@ -916,15 +978,57 @@ export default function Golfing() {
             </div>
 
             <div>
-              <label className="block mb-1">Score</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block">Score</label>
+                <button
+                  type="button"
+                  className="text-blue-400 text-sm"
+                  onClick={() => (showScorecard ? setShowScorecard(false) : openScorecard())}
+                >
+                  {showScorecard ? "Hide scorecard" : "Enter scorecard by hole"}
+                </button>
+              </div>
               <input
                 type="number"
-                className="w-full p-2 rounded bg-slate-700 text-white"
+                className="w-full p-2 rounded bg-slate-700 text-white disabled:opacity-60"
                 value={form.score}
+                disabled={showScorecard}
                 onChange={(e) =>
                   setForm({ ...form, score: parseInt(e.target.value || "0") })
                 }
               />
+              {showScorecard && (
+                <div className="mt-2 space-y-2">
+                  <div>
+                    <label className="block mb-1 text-xs text-gray-400">Par per hole</label>
+                    <ParsGrid
+                      pars={logPars}
+                      onChange={(i, v) =>
+                        setLogPars((prev) => prev.map((x, idx) => (idx === i ? v : x)))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-xs text-gray-400">Your score per hole</label>
+                    <ParsGrid
+                      pars={logHoleScores}
+                      min={1}
+                      max={15}
+                      onChange={(i, v) =>
+                        setLogHoleScores((prev) => prev.map((x, idx) => (idx === i ? v : x)))
+                      }
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    {(() => {
+                      const total = logHoleScores.reduce((a, b) => a + b, 0);
+                      const totalPar = logPars.reduce((a, b) => a + b, 0);
+                      const diff = total - totalPar;
+                      return `Total: ${total} (${diff >= 0 ? "+" : ""}${diff} vs par)`;
+                    })()}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>

@@ -7,6 +7,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { currentDatetimeLocal } from "../../../lib/datetimeLocal";
 import { groupLogsByLocation, FitBoundsPoints } from "../../../lib/locationUtils";
 import StatisticsSection from "../../../components/StatisticsSection";
+import LocationSearchInput from "../../../components/LocationSearchInput";
 import { filterLogsByRange, type TimeRange } from "../../../components/TimeRangeFilter";
 
 const ACTIVITY_ID = "0ddcfe52-2da0-47b6-a44a-e282f54ac21d";
@@ -268,26 +269,22 @@ export default function Surfing() {
 
             {showAddLocation && (
               <div className="mt-2 space-y-2">
+                <LocationSearchInput
+                  onSelect={(r) => {
+                    setNewLocationName(r.shortName);
+                    setNewLat(String(r.lat));
+                    setNewLon(String(r.lon));
+                  }}
+                />
                 <input
                   className="w-full p-2 rounded bg-slate-700 text-white"
-                  placeholder="Add new location name"
+                  placeholder="Location name"
                   value={newLocationName}
                   onChange={(e) => setNewLocationName(e.target.value)}
                 />
-                <div className="flex gap-2">
-                  <input
-                    className="w-1/2 p-2 rounded bg-slate-700 text-white"
-                    placeholder="Lat"
-                    value={newLat}
-                    onChange={(e) => setNewLat(e.target.value)}
-                  />
-                  <input
-                    className="w-1/2 p-2 rounded bg-slate-700 text-white"
-                    placeholder="Lon"
-                    value={newLon}
-                    onChange={(e) => setNewLon(e.target.value)}
-                  />
-                </div>
+                {newLat && newLon && (
+                  <p className="text-xs text-gray-400">📍 {newLat}, {newLon}</p>
+                )}
                 <button
                   type="button"
                   onClick={addNewLocation}

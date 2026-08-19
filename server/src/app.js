@@ -11,6 +11,7 @@ import locationRoutes from './routes/locations.js'
 import esf551Routes from './routes/esf551.js'
 import healthExportRoutes from './routes/healthExport.js'
 import latestActivityRoutes from './routes/latestActivity.js'
+import geocodeRoutes from './routes/geocode.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -40,6 +41,9 @@ const writeLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false,
   skip: (req) => req.method === 'GET',
 })
+// Nominatim's usage policy asks for roughly 1 request/second; the frontend
+// already debounces keystrokes, this is just a backstop.
+const geocodeLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false })
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
 app.use('/api/auth', authLimiter, authRoutes)
@@ -48,6 +52,7 @@ app.use('/api/latest-activity', latestActivityRoutes)
 app.use('/api/activities', writeLimiter, activityRoutes)
 app.use('/api/logs', writeLimiter, logRoutes)
 app.use('/api/locations', writeLimiter, locationRoutes)
+app.use('/api/geocode', geocodeLimiter, geocodeRoutes)
 
 // Serve the built frontend (present in the Docker image).
 const distDir = path.resolve(__dirname, '../../dist')
