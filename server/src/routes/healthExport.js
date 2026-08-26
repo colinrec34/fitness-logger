@@ -12,19 +12,40 @@ const DEFAULT_HIKE_ACTIVITY_ID = 'a2fb0a80-f149-4761-a339-aeb282ba06a9'
 
 const router = Router()
 
+// Each bearer token maps to one household member's user/activity ids, so a
+// second Strava-scraper instance (different token, different session cookie)
+// can feed the same ingest endpoint without misattributing workouts to Colin.
+function resolveIdentity(token) {
+  if (!token) return null
+  if (token === process.env.HEALTH_EXPORT_TOKEN) {
+    return {
+      userId: process.env.HEALTH_EXPORT_USER_ID || process.env.ESF551_USER_ID,
+      activityIds: {
+        run: process.env.HEALTH_EXPORT_RUN_ACTIVITY_ID || DEFAULT_RUN_ACTIVITY_ID,
+        hike: process.env.HEALTH_EXPORT_HIKE_ACTIVITY_ID || DEFAULT_HIKE_ACTIVITY_ID,
+      },
+    }
+  }
+  if (process.env.HEALTH_EXPORT_TOKEN_LUCAS && token === process.env.HEALTH_EXPORT_TOKEN_LUCAS) {
+    return {
+      userId: process.env.HEALTH_EXPORT_USER_ID_LUCAS,
+      activityIds: {
+        run: process.env.HEALTH_EXPORT_RUN_ACTIVITY_ID_LUCAS,
+        hike: process.env.HEALTH_EXPORT_HIKE_ACTIVITY_ID_LUCAS,
+      },
+    }
+  }
+  return null
+}
+
 router.post('/', async (req, res, next) => {
   try {
-    const expected = process.env.HEALTH_EXPORT_TOKEN
     const provided = (req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1]
-    if (!expected || provided !== expected) return res.status(401).json({ error: 'Unauthorized' })
+    const identity = resolveIdentity(provided)
+    if (!identity) return res.status(401).json({ error: 'Unauthorized' })
 
-    const userId = process.env.HEALTH_EXPORT_USER_ID || process.env.ESF551_USER_ID
+    const { userId, activityIds } = identity
     if (!userId) return res.status(500).json({ error: 'Missing server configuration', missing: { userId: true } })
-
-    const activityIds = {
-      run: process.env.HEALTH_EXPORT_RUN_ACTIVITY_ID || DEFAULT_RUN_ACTIVITY_ID,
-      hike: process.env.HEALTH_EXPORT_HIKE_ACTIVITY_ID || DEFAULT_HIKE_ACTIVITY_ID,
-    }
 
     const workouts = req.body?.data?.workouts
     if (!Array.isArray(workouts)) return res.status(400).json({ error: 'Expected data.workouts array' })

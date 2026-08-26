@@ -19,6 +19,12 @@ services:
       HEALTH_EXPORT_USER_ID: ${HEALTH_EXPORT_USER_ID:-}
       HEALTH_EXPORT_RUN_ACTIVITY_ID: ${HEALTH_EXPORT_RUN_ACTIVITY_ID:-}
       HEALTH_EXPORT_HIKE_ACTIVITY_ID: ${HEALTH_EXPORT_HIKE_ACTIVITY_ID:-}
+      # Second household member (Lucas) — separate token/user/activity ids so
+      # his strava-scraper instance doesn't write into Colin's data.
+      HEALTH_EXPORT_TOKEN_LUCAS: ${HEALTH_EXPORT_TOKEN_LUCAS:-}
+      HEALTH_EXPORT_USER_ID_LUCAS: ${HEALTH_EXPORT_USER_ID_LUCAS:-}
+      HEALTH_EXPORT_RUN_ACTIVITY_ID_LUCAS: ${HEALTH_EXPORT_RUN_ACTIVITY_ID_LUCAS:-}
+      HEALTH_EXPORT_HIKE_ACTIVITY_ID_LUCAS: ${HEALTH_EXPORT_HIKE_ACTIVITY_ID_LUCAS:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,6 +47,28 @@ services:
       SYNC_INTERVAL_SECONDS: ${STRAVA_SYNC_INTERVAL_SECONDS:-3600}
     volumes:
       - strava_scraper_state:/state
+    depends_on:
+      - app
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Second instance of the same scraper, for Lucas's Strava account — separate
+  # session cookie, separate ingest token so /api/health-export attributes his
+  # workouts to his own user/activity ids, separate dedupe state volume.
+  strava-scraper-lucas:
+    build: ./strava-scraper
+    environment:
+      STRAVA_SESSION_COOKIE: ${STRAVA_SESSION_COOKIE_LUCAS:-}
+      HEALTH_EXPORT_TOKEN: ${HEALTH_EXPORT_TOKEN_LUCAS:-}
+      HEALTH_EXPORT_URL: http://app:3000/api/health-export
+      SYNC_INTERVAL_SECONDS: ${STRAVA_SYNC_INTERVAL_SECONDS:-3600}
+      STATE_FILE: /state/synced.json
+    volumes:
+      - strava_scraper_state_lucas:/state
     depends_on:
       - app
     restart: unless-stopped
@@ -73,3 +101,4 @@ services:
 volumes:
   postgres_data:
   strava_scraper_state:
+  strava_scraper_state_lucas:
