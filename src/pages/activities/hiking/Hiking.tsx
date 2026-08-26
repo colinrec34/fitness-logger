@@ -24,6 +24,10 @@ function metersToMiles(meters: number) {
   return meters / 1609.34;
 }
 
+function movingSeconds(data: { moving_time?: number; elapsed_time?: number }): number {
+  return data.moving_time || data.elapsed_time || 0;
+}
+
 function formatDuration(durationSeconds: number): string {
   const totalSeconds = Math.round(durationSeconds);
   const hours = Math.floor(totalSeconds / 3600);
@@ -142,9 +146,9 @@ export default function Hiking() {
                 <p className="text-sm text-gray-300">
                   {metersToMiles(log.data.distance).toFixed(2)} mi ·{" "}
                   {log.data.total_elevation_gain?.toFixed(0)} ft ·{" "}
-                  {formatDuration(log.data.elapsed_time || 0)} ·{" "}
+                  {formatDuration(movingSeconds(log.data))} ·{" "}
                   {formatPace(
-                    log.data.elapsed_time,
+                    movingSeconds(log.data),
                     metersToMiles(log.data.distance)
                   )}
                 </p>
@@ -228,10 +232,10 @@ export default function Hiking() {
                               <p>
                                 {log.data.total_elevation_gain?.toFixed(0)} ft
                               </p>
-                              <p>{formatDuration(log.data.elapsed_time || 0)}</p>
+                              <p>{formatDuration(movingSeconds(log.data))}</p>
                               <p>
                                 {formatPace(
-                                  log.data.elapsed_time,
+                                  movingSeconds(log.data),
                                   metersToMiles(log.data.distance)
                                 )}
                               </p>

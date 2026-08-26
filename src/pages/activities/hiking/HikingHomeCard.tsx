@@ -14,6 +14,10 @@ function metersToMiles(meters: number) {
   return meters / 1609.34;
 }
 
+function movingSeconds(data: { moving_time?: number; elapsed_time?: number }): number {
+  return data.moving_time || data.elapsed_time || 0;
+}
+
 function formatDuration(durationSeconds: number): string {
   const totalSeconds = Math.round(durationSeconds);
   const hours = Math.floor(totalSeconds / 3600);
@@ -164,13 +168,13 @@ export default function HikingHomeCard() {
         </p>
         <p>
           <strong>Duration:</strong>{" "}
-          {latest.data.elapsed_time != null
-            ? formatDuration(latest.data.elapsed_time)
+          {latest.data.elapsed_time != null || latest.data.moving_time != null
+            ? formatDuration(movingSeconds(latest.data))
             : "Time N/A"}
         </p>
         <p>
           <strong>Pace:</strong>{" "}
-          {formatPace(latest.data.elapsed_time, metersToMiles(latest.data.distance))}
+          {formatPace(movingSeconds(latest.data), metersToMiles(latest.data.distance))}
         </p>
         {/* {latest.notes && (
           <p className="mt-2 italic text-gray-400 whitespace-pre-line">
