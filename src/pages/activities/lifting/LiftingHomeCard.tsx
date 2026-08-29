@@ -3,8 +3,6 @@ import Card from "../../../components/Card";
 import { format, formatDistanceToNow } from "date-fns";
 import { supabase } from "../../../api/supabaseClient";
 
-const ACTIVITY_ID = "e07d19fd-c9a0-42f0-a110-01d532a5b66d";
-
 import type { LogRow } from "./types";
 
 function estimateSessionsToGoal(
@@ -18,6 +16,7 @@ function estimateSessionsToGoal(
 
 export default function LiftProgress() {
   const [userId, setUserId] = useState<string | null>(null);
+  const [activityId, setActivityId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,17 +44,36 @@ export default function LiftProgress() {
     getUser();
   }, []);
 
+  // Resolve this user's own "lifting" activity id (each user has their own
+  // activities row/id, so this can't be a hardcoded constant).
+  useEffect(() => {
+    async function fetchActivityId() {
+      if (!userId) return;
+      const { data, error } = await supabase
+        .from("activities")
+        .select("id")
+        .eq("slug", "lifting")
+        .single();
+      if (error) {
+        console.error("Error fetching lifting activity id:", error);
+        return;
+      }
+      setActivityId(data?.id ?? null);
+    }
+    fetchActivityId();
+  }, [userId]);
+
   // Fetching all logs
   useEffect(() => {
     async function fetchAllLogs() {
-      if (!userId) return;
+      if (!userId || !activityId) return;
 
       setLoading(true);
       const { data, error } = await supabase
         .from("logs")
         .select("*")
         .eq("user_id", userId)
-        .eq("activity_id", ACTIVITY_ID)
+        .eq("activity_id", activityId)
         .order("datetime", { ascending: true });
 
       if (error) {
@@ -67,7 +85,7 @@ export default function LiftProgress() {
       setLoading(false);
     }
     fetchAllLogs();
-  }, [userId]);
+  }, [userId, activityId]);
 
   // Loading state
   if (loading) {

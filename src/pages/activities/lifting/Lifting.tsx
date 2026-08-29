@@ -14,8 +14,6 @@ import { supabase } from "../../../api/supabaseClient";
 import { useAuth } from "../../../context/AuthContext";
 import { currentDatetimeLocal } from "../../../lib/datetimeLocal";
 
-const ACTIVITY_ID = "e07d19fd-c9a0-42f0-a110-01d532a5b66d";
-
 import type {
   SetEntry,
   LiftSection,
@@ -66,18 +64,38 @@ export default function Lifting() {
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activityId, setActivityId] = useState<string | null>(null);
+
+  // Resolve this user's own "lifting" activity id (each user has their own
+  // activities row/id, so this can't be a hardcoded constant).
+  useEffect(() => {
+    async function fetchActivityId() {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("activities")
+        .select("id")
+        .eq("slug", "lifting")
+        .single();
+      if (error) {
+        console.error("Error fetching lifting activity id:", error);
+        return;
+      }
+      setActivityId(data?.id ?? null);
+    }
+    fetchActivityId();
+  }, [user]);
 
   // Fetch all logs for this user/activity (for charts, history)
   useEffect(() => {
     async function fetchAllLogs() {
-      if (!user) return;
+      if (!user || !activityId) return;
       setLoading(true);
       setError(null);
       const { data, error } = await supabase
         .from("logs")
         .select("*")
         .eq("user_id", user.id)
-        .eq("activity_id", ACTIVITY_ID)
+        .eq("activity_id", activityId)
         .order("datetime", { ascending: true });
 
       if (error) {
@@ -90,11 +108,12 @@ export default function Lifting() {
       setLoading(false);
     }
     fetchAllLogs();
-  }, [user]);
+  }, [user, activityId]);
 
   // Fetch single log for selected date and populate form
   useEffect(() => {
     async function fetchLogForDate() {
+      if (!activityId) return;
       const selectedDate = new Date(datetime);
 
       const start = new Date(selectedDate);
@@ -109,7 +128,7 @@ export default function Lifting() {
         .from("logs")
         .select("*")
         .eq("user_id", user?.id)
-        .eq("activity_id", ACTIVITY_ID)
+        .eq("activity_id", activityId)
         .gte("datetime", startISO)
         .lte("datetime", endISO)
         .limit(1)
@@ -158,7 +177,7 @@ export default function Lifting() {
     }
 
     fetchLogForDate();
-  }, [datetime, user]);
+  }, [datetime, user, activityId]);
 
   // Normalize sets: ensure sets is at least 1 everywhere
   function normalizeSets(lift: LiftSection): LiftSection {
@@ -171,7 +190,7 @@ export default function Lifting() {
   // On submit, validate and save log entry with upsert
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !activityId) return;
 
     try {
       const validateWeights = (lift: LiftSection) => {
@@ -200,7 +219,7 @@ export default function Lifting() {
 
       const payload = {
         user_id: user.id,
-        activity_id: ACTIVITY_ID,
+        activity_id: activityId,
         datetime: new Date(datetime).toISOString(),
         data: {
           squat: normalizeSets(squat),
@@ -230,7 +249,7 @@ export default function Lifting() {
         .from("logs")
         .select("*")
         .eq("user_id", user.id)
-        .eq("activity_id", ACTIVITY_ID)
+        .eq("activity_id", activityId)
         .order("datetime", { ascending: true });
 
       if (fetchError) {
