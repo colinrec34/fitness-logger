@@ -20,12 +20,22 @@ export interface LiftingLogData {
 }
 
 export interface LogRow {
-  id: number;
+  id: string;
   user_id: string;
   activity_id: string;
   datetime: string;
-  location_id?: number;
+  location_id?: string | null;
   data: LiftingLogData;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface LocationRow {
+  id: string;
+  user_id: string;
+  activity_id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  created_at?: string;
 }

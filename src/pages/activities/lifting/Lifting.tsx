@@ -13,12 +13,14 @@ import { format } from "date-fns";
 import { supabase } from "../../../api/supabaseClient";
 import { useAuth } from "../../../context/AuthContext";
 import { currentDatetimeLocal } from "../../../lib/datetimeLocal";
+import LocationSearchInput from "../../../components/LocationSearchInput";
 
 import type {
   SetEntry,
   LiftSection,
   // LiftingLogData,
   LogRow,
+  LocationRow,
 } from "./types";
 
 export default function Lifting() {
@@ -66,6 +68,14 @@ export default function Lifting() {
   const [error, setError] = useState<string | null>(null);
   const [activityId, setActivityId] = useState<string | null>(null);
 
+  // Location is optional (home workouts, older logs) — "" means none.
+  const [locations, setLocations] = useState<LocationRow[]>([]);
+  const [locationId, setLocationId] = useState("");
+  const [showAddLocation, setShowAddLocation] = useState(false);
+  const [newLocationName, setNewLocationName] = useState("");
+  const [newLat, setNewLat] = useState("");
+  const [newLon, setNewLon] = useState("");
+
   // Resolve this user's own "lifting" activity id (each user has their own
   // activities row/id, so this can't be a hardcoded constant).
   useEffect(() => {
@@ -84,6 +94,54 @@ export default function Lifting() {
     }
     fetchActivityId();
   }, [user]);
+
+  async function fetchLocations() {
+    if (!user || !activityId) return;
+    const { data, error } = await supabase
+      .from("locations")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("activity_id", activityId);
+    if (error) {
+      console.error("Error fetching locations:", error);
+      setLocations([]);
+    } else if (data) {
+      setLocations(data);
+    }
+  }
+
+  useEffect(() => {
+    fetchLocations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, activityId]);
+
+  async function addNewLocation() {
+    if (!user || !activityId || !newLocationName || !newLat || !newLon) {
+      alert("Please search for a place and provide a name.");
+      return;
+    }
+
+    try {
+      const { data: created, error } = await supabase.from("locations").insert({
+        user_id: user.id,
+        activity_id: activityId,
+        name: newLocationName,
+        lat: parseFloat(newLat),
+        lon: parseFloat(newLon),
+      });
+      if (error) throw error;
+
+      await fetchLocations();
+      if (created?.id) setLocationId(created.id);
+      setNewLocationName("");
+      setNewLat("");
+      setNewLon("");
+      setShowAddLocation(false);
+    } catch (err) {
+      console.error("Failed to add location:", err);
+      alert(err instanceof Error ? err.message : "Error adding location.");
+    }
+  }
 
   // Fetch all logs for this user/activity (for charts, history)
   useEffect(() => {
@@ -157,6 +215,7 @@ export default function Lifting() {
         setOverhead(normalizeSets(d.overhead ?? emptyLiftSection()));
         setClean(normalizeSets(d.power ?? emptyLiftSection()));
         setNotes(d.notes ?? "");
+        setLocationId(data.location_id ?? "");
       }
     }
 
@@ -174,6 +233,7 @@ export default function Lifting() {
       setOverhead(emptyLiftSection());
       setClean(emptyLiftSection());
       setNotes("");
+      setLocationId("");
     }
 
     fetchLogForDate();
@@ -221,6 +281,7 @@ export default function Lifting() {
         user_id: user.id,
         activity_id: activityId,
         datetime: new Date(datetime).toISOString(),
+        location_id: locationId || null,
         data: {
           squat: normalizeSets(squat),
           bench: normalizeSets(bench),
@@ -423,6 +484,61 @@ export default function Lifting() {
             required
           />
 
+          {/* LOCATION (optional) */}
+          <div className="p-4 border rounded shadow bg-slate-800">
+            <label className="block font-semibold mb-1">Location</label>
+            <select
+              className="w-full p-2 border rounded bg-slate-900"
+              value={locationId}
+              onChange={(e) => setLocationId(e.target.value)}
+            >
+              <option value="">No location</option>
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              className="mt-2 text-blue-400"
+              onClick={() => setShowAddLocation((prev) => !prev)}
+            >
+              {showAddLocation ? "Cancel" : "+ Add new location"}
+            </button>
+
+            {showAddLocation && (
+              <div className="mt-2 space-y-2">
+                <LocationSearchInput
+                  onSelect={(r) => {
+                    setNewLocationName(r.shortName);
+                    setNewLat(String(r.lat));
+                    setNewLon(String(r.lon));
+                  }}
+                />
+                <input
+                  className="w-full p-2 border rounded bg-slate-900"
+                  placeholder="Location name"
+                  value={newLocationName}
+                  onChange={(e) => setNewLocationName(e.target.value)}
+                />
+                {newLat && newLon && (
+                  <p className="text-xs text-gray-400">
+                    📍 {newLat}, {newLon}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={addNewLocation}
+                  className="bg-blue-500 px-3 py-1 rounded text-white w-full"
+                >
+                  Add New Location
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* ROW 1 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Back Squat */}
@@ -542,6 +658,9 @@ export default function Lifting() {
                   <li key={log.id} className="border-b border-slate-600 pb-2">
                     <div className="font-semibold text-white">
                       {format(new Date(log.datetime), "MMMM d, yyyy")}
+                      {log.location_id &&
+                        locations.find((l) => l.id === log.location_id) &&
+                        `: ${locations.find((l) => l.id === log.location_id)!.name}`}
                     </div>
                     <div className="text-sm text-gray-300">
                       {[
